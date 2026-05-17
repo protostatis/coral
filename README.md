@@ -102,6 +102,14 @@ Topic data is available later, after enough page captures accumulate:
 const topic = await coral.getTopicView("Trending Stocks");
 ```
 
+For the high-fidelity reef renderer, build a read-time colony model from the same raw captures:
+
+```js
+const reef = await coral.getReef({ answer_id: answerId });
+```
+
+`getReef()` does not add write-time classification. It maps existing capture fields into temporary colony DNA only when rendering or querying the reef.
+
 To power "what changed?" between two runs:
 
 ```js
@@ -288,7 +296,7 @@ Then open `examples/coral-ui-demo.html` in a browser.
 Standalone visual research artifacts live in `examples/`:
 
 - `reef-renderer-deck.html` compares renderer directions against the same toy reef model.
-- `reef-fidelity-spike.html` tests a Three.js colony-DNA reef wall where similar content grows together.
+- `reef-fidelity-spike.html` tests a Three.js colony-DNA reef wall where similar content grows together. It can use static fallback data, embedded `#coral-reef-data` JSON, or `?api=/api/coral/reef` once a host app exposes `coral.getReef()`.
 
 Search Agent Sky can embed the server-rendered fragment like this:
 
@@ -307,6 +315,7 @@ const html = renderCoralDashboard({
 The lower-level data APIs remain available for native React/Next components:
 
 - `getCaptureFeed(filters)` returns page-level timeline, top domains, extraction tools, and recent captures.
+- `getReef(filters)` returns a read-time colony-DNA model for high-fidelity reef renderers.
 - `getTopicView(topic)` returns topic-level timeline, top domains, top terms, recent runs, and recent captures.
 - `compareRuns(oldRunId, newRunId)` returns added, removed, changed, and common captures.
 - `stats()` returns global capture/run/domain/topic counts.

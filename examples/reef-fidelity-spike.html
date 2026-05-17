@@ -392,6 +392,42 @@
       line-height: 1.42;
     }
 
+    .capture-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .capture-list a,
+    .capture-list div {
+      display: block;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      color: var(--muted);
+      background: rgba(0, 12, 18, 0.24);
+      text-decoration: none;
+    }
+
+    .capture-list a:hover { border-color: rgba(190,255,241,0.5); }
+
+    .capture-list strong {
+      display: block;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.1em;
+      line-height: 1.35;
+      text-transform: uppercase;
+    }
+
+    .capture-list span {
+      display: block;
+      margin-top: 5px;
+      font-size: 0.75rem;
+      line-height: 1.35;
+    }
+
     .source-grid {
       display: grid;
       grid-template-columns: repeat(5, minmax(120px, 1fr));
@@ -560,7 +596,9 @@
     <section class="panel command-panel" aria-label="Coral fidelity controls">
       <p class="eyebrow">Fidelity spike</p>
       <h1>Colony DNA before graph UI.</h1>
-      <p class="lede">This prototype hides the graph and renders knowledge as grouped growth. Similar captures share morphology, cluster together, and reveal details only when you dive close.</p>
+      <p class="lede">This prototype hides the graph and renders human-driven artifacts as grouped growth. Similar captures share morphology, cluster together, and reveal details only when you dive close.</p>
+
+      <p class="eyebrow" data-source-status>Static fallback reef</p>
 
       <div class="search-box">
         <input data-query type="search" placeholder="Try: stock, news, filings, docs, social">
@@ -594,6 +632,9 @@
         <div><strong>Recency</strong><span data-map-recency>Fresh captures are pale growth tips. Older evidence is darker, thicker skeleton.</span></div>
         <div><strong>Inspection</strong><span data-map-inspection>Individual pages appear only at macro range as polyps and tips.</span></div>
       </div>
+
+      <div class="section-title"><span>Recent artifacts</span><span>raw captures</span></div>
+      <div class="capture-list" data-capture-list></div>
     </aside>
 
     <section class="panel source-panel" aria-label="Reference sources">
@@ -628,7 +669,7 @@
     import * as THREE from 'https://esm.sh/three@0.160.0';
     import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
-    const colonies = [
+    const fallbackColonies = [
       {
         id: 'stocks',
         label: 'Stocks reef head',
@@ -716,6 +757,9 @@
       }
     ];
 
+    let colonies = fallbackColonies;
+    let reefModel = null;
+
     const root = document.querySelector('#reef-root');
     const labelLayer = document.querySelector('[data-label-layer]');
     const dnaList = document.querySelector('[data-dna-list]');
@@ -730,7 +774,8 @@
       growth: document.querySelector('[data-stat-growth]'),
       similarity: document.querySelector('[data-map-similarity]'),
       recency: document.querySelector('[data-map-recency]'),
-      inspection: document.querySelector('[data-map-inspection]')
+      inspection: document.querySelector('[data-map-inspection]'),
+      captureList: document.querySelector('[data-capture-list]')
     };
 
     const scene = new THREE.Scene();
@@ -771,15 +816,19 @@
 
     window.__reefState = { stage: 'boot', ready: false };
     try {
+      window.__reefState.stage = 'data';
+      reefModel = await loadReefModel();
+      if (reefModel?.colonies?.length) colonies = reefModel.colonies.map((colony, index) => normalizeLoadedColony(colony, index));
       window.__reefState.stage = 'ui';
       buildUi();
       window.__reefState.stage = 'scene';
       buildScene();
       window.__reefState.stage = 'select';
-      selectColony('stocks', { focus: false, silent: true });
+      selectColony(colonies[0]?.id || 'stocks', { focus: false, silent: true });
       window.__reefState.stage = 'animate';
       animate();
       window.__reefState.ready = true;
+      updateSourceStatus();
     } catch (error) {
       window.__reefState.error = error.stack || String(error);
       console.error(error);
@@ -843,11 +892,13 @@
         colonyGroups.set(colony.id, group);
         scene.add(group);
 
-        if (colony.id === 'stocks') buildBranchingColony(group, colony);
-        if (colony.id === 'news') buildFanColony(group, colony);
-        if (colony.id === 'docs') buildPlateColony(group, colony);
-        if (colony.id === 'filings') buildBrainColony(group, colony);
-        if (colony.id === 'social') buildAnemoneColony(group, colony);
+        const morphology = colony.morphology || morphologyForId(colony.id);
+        if (morphology === 'branching') buildBranchingColony(group, colony);
+        if (morphology === 'fan') buildFanColony(group, colony);
+        if (morphology === 'plate') buildPlateColony(group, colony);
+        if (morphology === 'brain') buildBrainColony(group, colony);
+        if (morphology === 'anemone') buildAnemoneColony(group, colony);
+        group.scale.setScalar(0.86 + Math.min(0.55, Math.sqrt(Math.max(1, colony.captures || 1)) / 18));
       }
 
       addSelectionRing();
@@ -1216,10 +1267,26 @@
       ui.similarity.textContent = colony.similarity;
       ui.recency.textContent = colony.recency;
       ui.inspection.textContent = colony.inspection;
+      renderCaptureList(colony);
       updateCards();
       moveSelectionRing(colony);
       if (options.focus) focusColony(id);
       if (!options.silent) showToast(colony.content + ' colony selected. ' + colony.dna + ' is the visible grouping grammar.');
+    }
+
+    function renderCaptureList(colony) {
+      const captures = (colony.recent_captures || []).slice(0, 4);
+      if (!captures.length) {
+        const domains = (colony.top_domains || []).slice(0, 4).map((entry) => entry.domain + ' × ' + entry.count).join(' · ');
+        ui.captureList.innerHTML = '<div><strong>Source texture</strong><span>' + escapeHtml(domains || 'Static visual sample; connect ?api=/api/coral/reef for live captures.') + '</span></div>';
+        return;
+      }
+      ui.captureList.innerHTML = captures.map((capture) => {
+        const href = escapeHtml(capture.url || '#');
+        const title = escapeHtml(capture.title || capture.domain || capture.url || 'Untitled capture');
+        const meta = escapeHtml([capture.domain, capture.tool, capture.captured_at?.slice(0, 10)].filter(Boolean).join(' · '));
+        return '<a href="' + href + '" target="_blank" rel="noreferrer"><strong>' + title + '</strong><span>' + meta + '</span></a>';
+      }).join('');
     }
 
     function updateCards() {
@@ -1262,7 +1329,15 @@
         return;
       }
       const match = colonies.find((colony) => {
-        const haystack = [colony.id, colony.label, colony.content, colony.dna, ...colony.tags].join(' ').toLowerCase();
+        const captureText = (colony.recent_captures || [])
+          .map((capture) => [capture.title, capture.domain, capture.url, capture.query, capture.topic, capture.text_preview].join(' '))
+          .join(' ');
+        const dataTerms = [
+          ...(colony.top_domains || []).map((entry) => entry.domain),
+          ...(colony.top_terms || []).map((entry) => entry.term),
+          ...(colony.topic_samples || []).map((entry) => entry.topic),
+        ];
+        const haystack = [colony.id, colony.label, colony.content, colony.dna, ...(colony.tags || []), ...dataTerms, captureText].join(' ').toLowerCase();
         return haystack.includes(q);
       });
       if (!match) {
@@ -1271,6 +1346,70 @@
       }
       selectColony(match.id, { focus: true });
       flashColony(match.id);
+    }
+
+    async function loadReefModel() {
+      const embedded = document.querySelector('#coral-reef-data')?.textContent?.trim();
+      if (embedded) {
+        try {
+          return { ...JSON.parse(embedded), source: 'embedded reef data' };
+        } catch (error) {
+          showToast('Embedded reef data was not valid JSON.');
+        }
+      }
+
+      const params = new URLSearchParams(location.search);
+      const api = params.get('api') || (location.protocol === 'file:' ? '' : '/api/coral/reef');
+      if (!api) return null;
+
+      try {
+        const response = await fetch(api, { headers: { accept: 'application/json' } });
+        if (!response.ok) throw new Error(response.status + ' ' + response.statusText);
+        return { ...(await response.json()), source: 'live reef api' };
+      } catch (error) {
+        showToast('Using static fallback reef: ' + error.message);
+        return null;
+      }
+    }
+
+    function normalizeLoadedColony(colony, index) {
+      const fallback = fallbackColonies[index % fallbackColonies.length];
+      return {
+        ...fallback,
+        ...colony,
+        id: colony.id || fallback.id,
+        label: colony.label || fallback.label,
+        content: colony.content || fallback.content,
+        dna: colony.dna || fallback.dna,
+        morphology: colony.morphology || fallback.morphology || morphologyForId(fallback.id),
+        color: colony.color || fallback.color,
+        swatch: colony.swatch || fallback.swatch,
+        position: Array.isArray(colony.position) ? colony.position : fallback.position,
+        captures: colony.captures ?? fallback.captures,
+        sources: colony.sources ?? fallback.sources,
+        tags: colony.tags || fallback.tags || [],
+      };
+    }
+
+    function updateSourceStatus() {
+      const node = document.querySelector('[data-source-status]');
+      if (!node) return;
+      if (!reefModel) {
+        node.textContent = 'Static fallback reef';
+        return;
+      }
+      const stats = reefModel.stats || {};
+      node.textContent = (reefModel.source || 'reef data') + ' · ' + (stats.capture_count || 0) + ' captures · ' + (stats.source_count || 0) + ' sources · ' + (stats.colony_count || colonies.length) + ' colonies';
+    }
+
+    function morphologyForId(id) {
+      return {
+        stocks: 'branching',
+        news: 'fan',
+        docs: 'plate',
+        filings: 'brain',
+        social: 'anemone',
+      }[id] || 'plate';
     }
 
     function flashColony(id) {

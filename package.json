@@ -18,6 +18,10 @@
       "types": "./src/index.d.ts",
       "import": "./src/explorer.js"
     },
+    "./reef": {
+      "types": "./src/index.d.ts",
+      "import": "./src/reef.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

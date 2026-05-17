@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { appendJsonl, readJsonl, readJsonlArray } from "./jsonl.js";
 import { buildCoralGraph } from "./graph.js";
+import { buildCoralReefModel } from "./reef.js";
 import { canonicalizeUrl, domainFromUrl, normalizeCapture, normalizeRun } from "./normalize.js";
 import {
   compareBySearchResult,
@@ -15,6 +16,7 @@ import {
 import { buildCaptureFeed, buildTopicView, compareCaptureSets } from "./views.js";
 export { buildCoralExplorerModel, coralExplorerCss, coralExplorerScript, renderCoralExplorer, renderCoralExplorerDocument } from "./explorer.js";
 export { buildCoralGraph } from "./graph.js";
+export { buildCoralReefModel } from "./reef.js";
 export { buildCoralUiModel, coralUiCss, coralUiScript, renderCoralDashboard, renderCoralDocument } from "./ui.js";
 
 export class Coral {
@@ -132,6 +134,23 @@ export class Coral {
       query: args.query ?? "",
       limit: args.limit ?? 500,
       termLimit: args.termLimit ?? 28,
+    });
+  }
+
+  async getReef(input = {}, options = {}) {
+    const args = normalizeSearchArgs(input, options);
+    const captures = await this.listCaptures({
+      ...args,
+      includeDuplicates: args.includeDuplicates ?? true,
+      limit: args.limit ?? 500,
+      minScore: args.minScore ?? 0,
+    });
+
+    return buildCoralReefModel({
+      captures,
+      query: args.query ?? "",
+      limit: args.limit ?? 500,
+      colonyLimit: args.colonyLimit ?? 8,
     });
   }
 

@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
-import { buildCoralGraph, canonicalizeUrl, createCoral, renderCoralDocument, renderCoralExplorerDocument } from "../src/index.js";
+import { buildCoralGraph, buildCoralReefModel, canonicalizeUrl, createCoral, renderCoralDocument, renderCoralExplorerDocument } from "../src/index.js";
 
 let dir;
 let coral;
@@ -172,6 +172,65 @@ describe("coral", () => {
     assert.ok(graph.nodes.some((node) => node.id === `capture:${capture.id}`));
     assert.ok(graph.nodes.some((node) => node.id === "domain:example.com"));
     assert.ok(graph.edges.some((edge) => edge.type === "domain"));
+  });
+
+  it("builds read-time reef colonies from raw captures", async () => {
+    await coral.appendCapture({
+      url: "https://finviz.com/screener.ashx?v=340&s=ta_topgainers",
+      title: "Top Gainers",
+      text: "NVDA and AMD stocks are moving on AI chip demand.",
+      query: "top trending stocks today",
+      topic: "Trending Stocks",
+      captured_at: "2026-05-15T10:00:00Z",
+      meta: { tool: "ddm" },
+    });
+    await coral.appendCapture({
+      url: "https://reuters.com/technology/example",
+      title: "AI chip headline",
+      text: "A news report about chip infrastructure demand.",
+      query: "ai chip news",
+      topic: "AI infrastructure news",
+      captured_at: "2026-05-15T11:00:00Z",
+      meta: { tool: "get_text" },
+    });
+
+    const reef = await coral.getReef({ includeDuplicates: true });
+
+    assert.equal(reef.source, "read-time-coral-reef-model");
+    assert.equal(reef.stats.capture_count, 2);
+    assert.ok(reef.colonies.some((colony) => colony.id === "stocks" && colony.morphology === "branching"));
+    assert.ok(reef.colonies.some((colony) => colony.id === "news" && colony.morphology === "fan"));
+    assert.ok(reef.colonies.every((colony) => colony.recent_captures.every((capture) => !Object.hasOwn(capture, "text"))));
+  });
+
+  it("can build fallback reef colonies without write-time classification", () => {
+    const reef = buildCoralReefModel({
+      captures: [
+        {
+          id: "c_custom",
+          url: "https://example.com/human-problem",
+          canonical_url: "https://example.com/human-problem",
+          domain: "example.com",
+          title: "A human problem people keep researching",
+          text: "People repeatedly compare practical tradeoffs before deciding.",
+          query: "how people compare practical tradeoffs",
+          topic: "Human research trails",
+          captured_at: "2026-05-15T10:00:00Z",
+          run_id: "",
+          session_id: "",
+          answer_id: "",
+          source: "test",
+          content_hash: "h",
+          text_hash: "t",
+          duplicate_of: "",
+          meta: {},
+        },
+      ],
+    });
+
+    assert.equal(reef.stats.colony_count, 1);
+    assert.match(reef.ethos, /Human-driven artifacts/);
+    assert.equal(reef.colonies[0].captures, 1);
   });
 
   it("compares runs by canonical URL and content hash", async () => {

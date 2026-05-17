@@ -116,6 +116,10 @@ export interface GraphOptions extends SearchOptions {
   termLimit?: number;
 }
 
+export interface ReefOptions extends SearchOptions {
+  colonyLimit?: number;
+}
+
 export interface SearchResult {
   capture: Capture;
   score: number;
@@ -238,6 +242,63 @@ export interface CoralExplorerModelInput {
   graph?: CoralGraph;
 }
 
+export type CoralReefMorphology = "branching" | "fan" | "plate" | "brain" | "anemone";
+
+export interface CoralReefCapturePreview {
+  id: string;
+  title: string;
+  url: string;
+  domain: string;
+  captured_at: string;
+  query: string;
+  topic: string;
+  tool: string;
+  text_preview: string;
+}
+
+export interface CoralReefColony {
+  id: string;
+  label: string;
+  content: string;
+  dna: string;
+  morphology: CoralReefMorphology;
+  color: string;
+  swatch: string;
+  position: [number, number, number];
+  captures: number;
+  sources: number;
+  growth: string;
+  tags: string[];
+  copy: string;
+  similarity: string;
+  recency: string;
+  inspection: string;
+  first_captured_at: string;
+  last_captured_at: string;
+  recent_ratio: number;
+  top_domains: Array<{ domain: string; count: number; last_captured_at: string }>;
+  top_terms: Array<{ term: string; score: number }>;
+  tool_counts: Array<{ tool: string; count: number; last_captured_at: string }>;
+  topic_samples: Array<{ topic: string; count: number; last_captured_at: string }>;
+  recent_captures: CoralReefCapturePreview[];
+}
+
+export interface CoralReefModel {
+  schema_version: number;
+  generated_at: string;
+  query: string;
+  ethos: string;
+  source: string;
+  stats: {
+    capture_count: number;
+    source_count: number;
+    run_count: number;
+    answer_count: number;
+    colony_count: number;
+  };
+  colonies: CoralReefColony[];
+}
+
 export interface ShapeOptions<Row = unknown> {
   columns?: string[];
   hint?: string;
@@ -265,6 +326,8 @@ export class Coral {
   getCaptureFeed(options?: SearchOptions & { recentLimit?: number }): Promise<CaptureFeed>;
   getGraph(query?: string, options?: GraphOptions): Promise<CoralGraph>;
   getGraph(options?: GraphOptions): Promise<CoralGraph>;
+  getReef(query?: string, options?: ReefOptions): Promise<CoralReefModel>;
+  getReef(options?: ReefOptions): Promise<CoralReefModel>;
   listRuns(filters?: Partial<SearchOptions> & { query?: string; limit?: number }): Promise<Run[]>;
   getRun(id: string): Promise<Run | null>;
   getTopicView(topic: string, options?: SearchOptions & { runLimit?: number; recentLimit?: number; runQuery?: string }): Promise<TopicView>;
@@ -285,6 +348,7 @@ export function buildTopicView(input?: { topic?: string; captures?: Capture[]; r
 export function buildCaptureFeed(input?: { captures?: Capture[]; limit?: number }): CaptureFeed;
 export function compareCaptureSets(leftCaptures?: Capture[], rightCaptures?: Capture[]): CompareResult;
 export function buildCoralGraph(input?: { captures?: Capture[]; query?: string; limit?: number; termLimit?: number }): CoralGraph;
+export function buildCoralReefModel(input?: { captures?: Capture[]; query?: string; limit?: number; colonyLimit?: number }): CoralReefModel;
 export function buildCoralUiModel(input?: CoralUiModelInput): Record<string, unknown>;
 export function renderCoralDocument(input?: CoralUiModelInput, options?: { title?: string }): string;
 export function renderCoralDashboard(input?: CoralUiModelInput): string;
