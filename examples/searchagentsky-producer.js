@@ -45,3 +45,33 @@ export async function getPriorResearch(query) {
 export async function getAnswerCaptureFeed(answerId) {
   return coral.getCaptureFeed({ answer_id: answerId });
 }
+
+export async function getAnswerReef(answerId) {
+  return coral.getReef({ answer_id: answerId, includeDuplicates: true });
+}
+
+export function registerCoralReefRoutes(app, { basePath = "/api/coral/reef" } = {}) {
+  app.get(basePath, async (req, res) => {
+    try {
+      res.json(await coral.getReef(filtersFromQuery(req.query)));
+    } catch (error) {
+      res.status(500).json({ error: error.message || "failed to build coral reef" });
+    }
+  });
+}
+
+function filtersFromQuery(query = {}) {
+  const filters = { includeDuplicates: true };
+  if (typeof query.q === "string") filters.query = query.q;
+  if (typeof query.domain === "string") filters.domain = query.domain;
+  if (typeof query.run_id === "string") filters.run_id = query.run_id;
+  if (typeof query.session_id === "string") filters.session_id = query.session_id;
+  if (typeof query.answer_id === "string") filters.answer_id = query.answer_id;
+  if (typeof query.after === "string") filters.after = query.after;
+  if (typeof query.before === "string") filters.before = query.before;
+  if (typeof query.limit === "string") {
+    const limit = Number(query.limit);
+    if (Number.isFinite(limit) && limit > 0) filters.limit = Math.min(limit, 500);
+  }
+  return filters;
+}

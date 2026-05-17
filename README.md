@@ -111,6 +111,24 @@ const reef = await coral.getReef({ answer_id: answerId });
 `getReef()` does not add write-time classification. It maps existing capture fields into temporary colony DNA only when rendering or querying the reef.
 The model includes capped render hints such as `capture_glyphs`, `source_bands`, and `timeline_bands`; these are derived from existing fields like domain, query, topic, tool, run, answer, timestamp, and text length, never from new write-time extraction.
 
+Search Agent Sky can expose that model as a read-only endpoint:
+
+```js
+app.get("/api/coral/reef", async (req, res) => {
+  res.json(await coral.getReef({
+    query: req.query.q,
+    domain: req.query.domain,
+    run_id: req.query.run_id,
+    session_id: req.query.session_id,
+    answer_id: req.query.answer_id,
+    includeDuplicates: true,
+    limit: 500,
+  }));
+});
+```
+
+Then open the fidelity spike against live data with `reef-fidelity-spike.html?api=/api/coral/reef`.
+
 To power "what changed?" between two runs:
 
 ```js
