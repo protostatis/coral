@@ -1,0 +1,1247 @@
+import { buildCoralGraph } from "./graph.js";
+
+const DEFAULT_TITLE = "Coral Knowledge Explorer";
+
+export function buildCoralExplorerModel(input = {}) {
+  const graph = input.graph ?? buildCoralGraph({ captures: input.captures ?? [], query: input.query ?? "" });
+
+  return {
+    title: input.title ?? DEFAULT_TITLE,
+    eyebrow: input.eyebrow ?? "Evidence reef map",
+    subtitle:
+      input.subtitle ??
+      "Source sites are reef bases. Saved pages grow as coral polyps. Topic signals stay hidden until you search or turn them on.",
+    backHref: input.backHref ?? "/coral",
+    backLabel: input.backLabel ?? "Capture feed",
+    graph,
+  };
+}
+
+export function renderCoralExplorerDocument(input = {}, options = {}) {
+  const model = buildCoralExplorerModel(input);
+  const title = escapeHtml(options.title ?? model.title);
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <style>${coralExplorerCss()}</style>
+</head>
+<body>
+  ${renderCoralExplorer(model)}
+  <script id="coral-graph-data" type="application/json">${safeJson(model.graph)}</script>
+  <script>${coralExplorerScript()}</script>
+</body>
+</html>
+`;
+}
+
+export function renderCoralExplorer(input = {}) {
+  const model = buildCoralExplorerModel(input);
+  const stats = model.graph.stats ?? {};
+
+  return `<main class="coral-explorer" data-coral-explorer>
+  <header class="coral-explorer-top">
+    <a class="coral-back-link" href="${escapeHtml(model.backHref)}">${escapeHtml(model.backLabel)}</a>
+    <div>
+      <p>${escapeHtml(model.eyebrow)}</p>
+      <h1>${escapeHtml(model.title)}</h1>
+      <span>${escapeHtml(model.subtitle)}</span>
+    </div>
+  </header>
+
+  <section class="coral-explorer-layout" aria-label="Coral knowledge graph explorer">
+    <aside class="coral-explorer-rail" aria-label="Explorer controls">
+      <label class="coral-search-label" for="coral-reef-search">Find saved evidence</label>
+      <input id="coral-reef-search" class="coral-reef-search" type="search" autocomplete="off" placeholder="site, page title, query, topic">
+
+      <div class="coral-filter-group" aria-label="Node type filters">
+        <button type="button" class="is-active" data-coral-type="capture">saved pages</button>
+        <button type="button" class="is-active" data-coral-type="domain">source sites</button>
+        <button type="button" data-coral-type="term">topic signals</button>
+      </div>
+
+      <dl class="coral-explorer-stats">
+        ${stat("saved pages", stats.capture_count)}
+        ${stat("source sites", stats.domain_count)}
+        ${stat("hidden signals", stats.term_count)}
+        ${stat("connections", stats.edge_count)}
+      </dl>
+
+      <div class="coral-metaphor-note">
+        <strong>How to read it</strong>
+        <span>Each labeled source site is drawn as a reef base. Small coral tubes are saved page captures attached to that source.</span>
+      </div>
+
+      <div class="coral-legend" aria-label="Legend">
+        <span><i class="domain"></i>source site reef base</span>
+        <span><i class="capture"></i>saved page polyp</span>
+        <span><i class="term"></i>topic signal</span>
+      </div>
+    </aside>
+
+    <section class="coral-reef-stage" aria-label="Interactive coral reef graph">
+      <svg class="coral-reef-svg" role="img" aria-label="Knowledge nodes arranged as a coral reef" tabindex="0">
+        <defs>
+          <filter id="coral-node-glow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="4" result="blur"></feGaussianBlur>
+            <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+          </filter>
+          <filter id="coral-soft-shadow" x="-70%" y="-70%" width="240%" height="240%">
+            <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#1b7770" flood-opacity="0.18"></feDropShadow>
+          </filter>
+          <radialGradient id="coral-polyp-gradient" cx="36%" cy="30%" r="72%">
+            <stop offset="0%" stop-color="#fff2a6"></stop>
+            <stop offset="45%" stop-color="#ff8b8f"></stop>
+            <stop offset="100%" stop-color="#f05f72"></stop>
+          </radialGradient>
+          <radialGradient id="coral-colony-gradient" cx="35%" cy="25%" r="74%">
+            <stop offset="0%" stop-color="#dffff8"></stop>
+            <stop offset="58%" stop-color="#62d7c7"></stop>
+            <stop offset="100%" stop-color="#32a99e"></stop>
+          </radialGradient>
+          <radialGradient id="coral-signal-gradient" cx="36%" cy="30%" r="72%">
+            <stop offset="0%" stop-color="#fff7bd"></stop>
+            <stop offset="100%" stop-color="#ffca55"></stop>
+          </radialGradient>
+        </defs>
+        <g data-coral-world>
+          <g data-coral-edges></g>
+          <g data-coral-nodes></g>
+        </g>
+      </svg>
+      <div class="coral-stage-toolbar" aria-label="Graph view controls">
+        <button type="button" data-coral-fit>reset view</button>
+        <span data-coral-visible-count>${number(stats.node_count)} visible items</span>
+      </div>
+      <div class="coral-canvas-callout">
+        <strong>Start here</strong>
+        <span>Click a labeled source site or one of its coral tubes to inspect saved evidence.</span>
+      </div>
+      <p class="coral-stage-hint">Drag to pan. Scroll to zoom. Topic signals are hidden until searched or enabled.</p>
+    </section>
+
+    <aside class="coral-node-drawer" aria-live="polite" aria-label="Selected evidence record">
+      <p class="coral-drawer-kicker">selected evidence</p>
+      <h2 data-coral-drawer-title>Select evidence</h2>
+      <div data-coral-drawer-body>
+        <div class="coral-drawer-onboarding">
+          <p class="coral-drawer-empty">Pick a source site to see where evidence came from, or pick a coral tube to inspect a saved page and raw text.</p>
+          <ol>
+            <li><strong>Source site</strong><span>Shows saved-page count and latest capture date.</span></li>
+            <li><strong>Saved page</strong><span>Opens URL, query, tool, and raw text preview.</span></li>
+            <li><strong>Topic signal</strong><span>Optional read-time clue you can reveal with the toggle.</span></li>
+          </ol>
+        </div>
+      </div>
+    </aside>
+  </section>
+</main>`;
+}
+
+export function coralExplorerCss() {
+  return `:root {
+  color-scheme: light;
+  --bg: #f6fbf3;
+  --ink: #123d3b;
+  --muted: #52706b;
+  --faint: #7fa09a;
+  --line: rgba(27, 119, 112, 0.18);
+  --panel: rgba(255, 255, 248, 0.78);
+  --coral: #ff6f7d;
+  --amber: #ffb45c;
+  --lime: #b7ef70;
+  --cyan: #53d8c8;
+  --blue: #69a7ff;
+  --sand: #fff0c9;
+  --foam: #ecfff9;
+  --mono: 'SFMono-Regular', 'Roboto Mono', 'Cascadia Code', Consolas, monospace;
+  --serif: Georgia, 'Times New Roman', serif;
+  --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: var(--sans);
+  background:
+    radial-gradient(circle at 14% 8%, rgba(83, 216, 200, 0.3), transparent 24rem),
+    radial-gradient(circle at 86% 12%, rgba(255, 111, 125, 0.24), transparent 23rem),
+    radial-gradient(circle at 58% 115%, rgba(255, 180, 92, 0.28), transparent 34rem),
+    repeating-linear-gradient(115deg, rgba(18, 61, 59, 0.035) 0 1px, transparent 1px 30px),
+    linear-gradient(180deg, #fbfff7 0%, #dff8f2 48%, #fff0c9 100%);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.95) 0 2px, transparent 2px),
+    radial-gradient(circle, rgba(83, 216, 200, 0.24) 0 1px, transparent 1px);
+  background-position: 24px 34px, 0 0;
+  background-size: 96px 96px, 37px 37px;
+  mask-image: linear-gradient(180deg, black, transparent 78%);
+}
+
+button, input { font: inherit; }
+
+button { cursor: pointer; }
+
+.coral-explorer {
+  width: min(1620px, calc(100vw - 28px));
+  margin: 0 auto;
+  padding: 14px 0 24px;
+}
+
+.coral-explorer-top {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 18px;
+  align-items: end;
+  min-height: 82px;
+  border-bottom: 1px solid rgba(27, 119, 112, 0.16);
+}
+
+.coral-back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+  background: rgba(255, 255, 248, 0.64);
+  box-shadow: 0 14px 34px rgba(27, 119, 112, 0.08);
+}
+
+.coral-back-link:hover,
+.coral-back-link:focus-visible,
+button:hover,
+button:focus-visible,
+input:focus-visible,
+.coral-reef-svg:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
+}
+
+.coral-explorer-top p {
+  margin: 0 0 5px;
+  color: #16887f;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.coral-explorer-top h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(2.9rem, 5.8vw, 6.1rem);
+  line-height: 0.84;
+  letter-spacing: -0.085em;
+  color: #123d3b;
+  text-shadow: 0 10px 0 rgba(255, 180, 92, 0.14);
+}
+
+.coral-explorer-top span {
+  display: block;
+  max-width: 760px;
+  margin: 9px 0 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.coral-explorer-layout {
+  display: grid;
+  grid-template-columns: 236px minmax(520px, 1fr) 328px;
+  gap: 14px;
+  min-height: calc(100vh - 120px);
+  padding-top: 12px;
+}
+
+.coral-explorer-rail,
+.coral-reef-stage,
+.coral-node-drawer {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  backdrop-filter: blur(16px);
+  border-radius: 26px;
+  box-shadow: 0 24px 80px rgba(27, 119, 112, 0.12);
+}
+
+.coral-explorer-rail,
+.coral-node-drawer {
+  padding: 18px;
+}
+
+.coral-search-label,
+.coral-drawer-kicker {
+  display: block;
+  color: var(--cyan);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.coral-reef-search {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  background: rgba(255,255,255,0.76);
+  padding: 0 12px;
+}
+
+.coral-filter-group {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.coral-filter-group button,
+.coral-stage-toolbar button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.58);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.coral-filter-group button.is-active {
+  color: #103a37;
+  border-color: transparent;
+  background: linear-gradient(90deg, #ffe28a, #ff9aa7, #78e2d5);
+  box-shadow: 0 10px 24px rgba(255, 111, 125, 0.18);
+}
+
+.coral-explorer-stats {
+  display: grid;
+  gap: 0;
+  margin: 18px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.coral-explorer-stats div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.coral-explorer-stats dt {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.coral-explorer-stats dd {
+  margin: 0;
+  color: #ff6f7d;
+  font-weight: 900;
+}
+
+.coral-metaphor-note {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 13px;
+  border: 1px solid rgba(255, 111, 125, 0.18);
+  border-radius: 18px;
+  color: var(--muted);
+  background: linear-gradient(135deg, rgba(255, 226, 138, 0.32), rgba(120, 226, 213, 0.18));
+}
+
+.coral-metaphor-note strong {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.coral-metaphor-note span {
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.coral-legend {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.coral-legend span { display: flex; align-items: center; gap: 9px; }
+.coral-legend i { width: 12px; height: 12px; display: inline-block; }
+.coral-legend .capture { border-radius: 50%; background: var(--coral); box-shadow: 0 0 18px rgba(255, 111, 125, 0.55); }
+.coral-legend .domain { border-radius: 45% 55% 48% 52%; background: var(--cyan); }
+.coral-legend .term { transform: rotate(45deg); background: var(--lime); }
+
+.coral-reef-stage {
+  position: relative;
+  overflow: hidden;
+  min-height: calc(100vh - 126px);
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255,255,255,0.85), transparent 8rem),
+    radial-gradient(circle at 70% 78%, rgba(255, 111, 125, 0.22), transparent 24%),
+    repeating-radial-gradient(ellipse at 50% 100%, rgba(18, 61, 59, 0.14) 0 1px, transparent 1px 58px),
+    linear-gradient(180deg, rgba(105, 167, 255, 0.24), rgba(83, 216, 200, 0.2) 45%, rgba(255, 240, 201, 0.5));
+}
+
+.coral-reef-stage::before {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  pointer-events: none;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 12% 70%, rgba(255, 111, 125, 0.18) 0 2px, transparent 3px),
+    radial-gradient(circle at 18% 78%, rgba(255, 180, 92, 0.18) 0 3px, transparent 4px),
+    radial-gradient(circle at 88% 78%, rgba(255, 111, 125, 0.14) 0 2px, transparent 3px);
+  background-size: 34px 34px, 48px 48px, 42px 42px;
+  mask-image: linear-gradient(180deg, transparent 35%, black 100%);
+}
+
+.coral-reef-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.34;
+  background:
+    linear-gradient(115deg, transparent 0 17%, rgba(255,255,255,0.5) 18%, transparent 20% 42%, rgba(255,255,255,0.34) 44%, transparent 46%),
+    radial-gradient(ellipse at 22% 98%, rgba(255, 111, 125, 0.16), transparent 20%),
+    radial-gradient(ellipse at 72% 102%, rgba(255, 180, 92, 0.16), transparent 22%);
+  mix-blend-mode: soft-light;
+}
+
+.coral-reef-svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: calc(100vh - 126px);
+  touch-action: none;
+}
+
+.coral-stage-toolbar {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.coral-stage-toolbar button,
+.coral-stage-toolbar span { pointer-events: auto; }
+
+.coral-stage-toolbar span {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 999px;
+  background: rgba(255, 255, 248, 0.74);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.coral-canvas-callout {
+  position: absolute;
+  z-index: 2;
+  left: 22px;
+  top: 68px;
+  display: grid;
+  gap: 5px;
+  max-width: 286px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 111, 125, 0.22);
+  border-radius: 22px;
+  color: var(--muted);
+  background: rgba(255, 255, 248, 0.72);
+  box-shadow: 0 16px 40px rgba(27, 119, 112, 0.1);
+  pointer-events: none;
+}
+
+.coral-canvas-callout::after {
+  content: '';
+  position: absolute;
+  left: 28px;
+  bottom: -10px;
+  width: 18px;
+  height: 18px;
+  border-right: 1px solid rgba(255, 111, 125, 0.22);
+  border-bottom: 1px solid rgba(255, 111, 125, 0.22);
+  background: rgba(255, 255, 248, 0.72);
+  transform: rotate(45deg);
+}
+
+.coral-canvas-callout strong {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.coral-canvas-callout span {
+  font-size: 0.88rem;
+  line-height: 1.38;
+}
+
+.coral-stage-hint {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  bottom: 12px;
+  max-width: 420px;
+  margin: 0;
+  color: rgba(18, 61, 59, 0.56);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+}
+
+.coral-edge {
+  fill: none;
+  stroke: rgba(27, 119, 112, 0.12);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  opacity: 0.6;
+}
+
+.coral-edge.is-term { stroke: rgba(255, 180, 92, 0.25); stroke-dasharray: 1 10; }
+.coral-edge.is-domain { stroke: rgba(206, 113, 95, 0.34); stroke-width: 2.1; opacity: 0.72; }
+.coral-edge.is-active { stroke: #ff6f7d; stroke-width: 2.2; opacity: 0.86; }
+.coral-edge.is-muted { opacity: 0.08; }
+
+.coral-node { cursor: pointer; outline: none; }
+.coral-node text {
+  fill: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 248, 0.92);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: auto;
+}
+
+.coral-node .hit { fill: transparent; stroke: transparent; pointer-events: all; }
+.coral-node .mark { filter: url(#coral-node-glow); transition: opacity 140ms ease, transform 140ms ease; }
+.coral-node .selection-halo { fill: none; stroke: #ffca55; stroke-width: 0; opacity: 0; pointer-events: none; }
+.coral-node .colony-shadow { fill: rgba(18, 61, 59, 0.12); filter: url(#coral-soft-shadow); }
+.coral-node .colony-base { fill: url(#coral-colony-gradient); stroke: rgba(25, 111, 104, 0.28); stroke-width: 1.2; }
+.coral-node .colony-lobe { fill: rgba(197, 255, 245, 0.42); stroke: rgba(31, 141, 131, 0.18); stroke-width: 0.8; }
+.coral-node .colony-contour { fill: none; stroke: rgba(15, 94, 88, 0.26); stroke-width: 1; stroke-linecap: round; }
+.coral-node .colony-speck { fill: rgba(255, 255, 248, 0.56); }
+.coral-node .tube-shadow { fill: rgba(181, 62, 74, 0.16); }
+.coral-node .tube-body { fill: url(#coral-polyp-gradient); stroke: rgba(181, 62, 74, 0.24); stroke-width: 0.7; }
+.coral-node .tube-mouth { fill: #fff4a8; stroke: rgba(181, 62, 74, 0.24); stroke-width: 0.7; }
+.coral-node .tube-throat { fill: rgba(255, 111, 125, 0.38); }
+.coral-node .tube-sprout { fill: none; stroke: rgba(255, 111, 125, 0.54); stroke-width: 0.9; stroke-linecap: round; }
+.coral-node .plankton-core { fill: url(#coral-signal-gradient); stroke: rgba(201, 132, 29, 0.26); stroke-width: 0.8; }
+.coral-node .plankton-ray { stroke: rgba(255, 180, 92, 0.52); stroke-width: 1; stroke-linecap: round; }
+.coral-node .source-plaque { fill: rgba(255, 255, 248, 0.84); stroke: rgba(27, 119, 112, 0.2); stroke-width: 1; }
+.coral-node .source-label { fill: #123d3b; font-size: 11px; font-weight: 900; stroke-width: 3px; }
+.coral-node .source-count { fill: #52706b; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; stroke-width: 3px; }
+.coral-node .page-label { fill: #123d3b; font-size: 10px; font-weight: 800; stroke-width: 3px; }
+.coral-node.is-muted { opacity: 0.16; }
+.coral-node.is-selected .selection-halo,
+.coral-node.is-match .selection-halo,
+.coral-node.is-neighbor .selection-halo,
+.coral-node:hover .selection-halo,
+.coral-node:focus-visible .selection-halo { opacity: 1; }
+.coral-node.is-selected .selection-halo { stroke: #123d3b; stroke-width: 2.8; }
+.coral-node.is-match .selection-halo { stroke: #ffca55; stroke-width: 2.2; }
+.coral-node.is-neighbor .selection-halo { stroke: var(--blue); stroke-width: 1.8; }
+.coral-node:hover .selection-halo { stroke: #ff6f7d; stroke-width: 2; }
+.coral-node:hover .mark { transform: scale(1.04); }
+.coral-node:hover .source-plaque { stroke: rgba(255, 111, 125, 0.6); stroke-width: 1.5; }
+
+.coral-node-drawer {
+  overflow: auto;
+}
+
+.coral-node-drawer h2 {
+  margin: 12px 0 14px;
+  font-family: var(--serif);
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+  color: #123d3b;
+}
+
+.coral-drawer-empty,
+.coral-drawer-field,
+.coral-drawer-preview {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.coral-drawer-onboarding ol {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coral-drawer-onboarding li {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 248, 0.62);
+}
+
+.coral-drawer-onboarding strong,
+.coral-drawer-onboarding span {
+  display: block;
+}
+
+.coral-drawer-onboarding strong {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.coral-drawer-onboarding span {
+  margin-top: 5px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.coral-drawer-field {
+  display: grid;
+  gap: 5px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.coral-drawer-field span {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.coral-drawer-field strong,
+.coral-drawer-field a {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.coral-drawer-field a { color: var(--cyan); }
+
+.coral-drawer-preview {
+  max-height: 280px;
+  margin: 12px 0 0;
+  overflow: auto;
+  padding: 12px;
+  border-left: 2px solid var(--cyan);
+  background:
+    repeating-linear-gradient(180deg, rgba(27, 119, 112, 0.05) 0 1px, transparent 1px 23px),
+    rgba(255,255,255,0.68);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 1120px) {
+  .coral-explorer-layout { grid-template-columns: 220px minmax(420px, 1fr); }
+  .coral-node-drawer { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+  .coral-explorer-top,
+  .coral-explorer-layout { grid-template-columns: 1fr; }
+  .coral-explorer-layout { min-height: 0; }
+  .coral-reef-stage,
+  .coral-reef-svg { min-height: 560px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; }
+}`;
+}
+
+export function coralExplorerScript() {
+  return `(() => {
+  const root = document.querySelector('[data-coral-explorer]');
+  const svg = root?.querySelector('.coral-reef-svg');
+  const world = root?.querySelector('[data-coral-world]');
+  const edgeLayer = root?.querySelector('[data-coral-edges]');
+  const nodeLayer = root?.querySelector('[data-coral-nodes]');
+  const searchInput = root?.querySelector('.coral-reef-search');
+  const visibleCount = root?.querySelector('[data-coral-visible-count]');
+  const drawerTitle = root?.querySelector('[data-coral-drawer-title]');
+  const drawerBody = root?.querySelector('[data-coral-drawer-body]');
+  const graph = JSON.parse(document.getElementById('coral-graph-data')?.textContent || '{"nodes":[],"edges":[],"stats":{}}');
+  const state = { scale: 1, panX: 0, panY: 0, query: '', selected: '', visibleTypes: new Set(['capture', 'domain']) };
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, { ...node }]));
+  const edgeList = graph.edges.filter((edge) => nodeById.has(edge.source) && nodeById.has(edge.target));
+  const neighbors = new Map();
+
+  for (const edge of edgeList) {
+    if (!neighbors.has(edge.source)) neighbors.set(edge.source, new Set());
+    if (!neighbors.has(edge.target)) neighbors.set(edge.target, new Set());
+    neighbors.get(edge.source).add(edge.target);
+    neighbors.get(edge.target).add(edge.source);
+  }
+
+  layoutNodes([...nodeById.values()]);
+  render();
+  updateTransform();
+  updateDrawer(null);
+
+  searchInput?.addEventListener('input', () => {
+    state.query = searchInput.value.trim().toLowerCase();
+    render();
+  });
+
+  root.querySelectorAll('[data-coral-type]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const type = button.getAttribute('data-coral-type');
+      if (state.visibleTypes.has(type)) state.visibleTypes.delete(type);
+      else state.visibleTypes.add(type);
+      button.classList.toggle('is-active', state.visibleTypes.has(type));
+      render();
+    });
+  });
+
+  root.querySelector('[data-coral-fit]')?.addEventListener('click', () => {
+    state.scale = 1;
+    state.panX = 0;
+    state.panY = 0;
+    updateTransform();
+  });
+
+  let panning = null;
+  let dragging = null;
+
+  svg.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const delta = event.deltaY > 0 ? 0.9 : 1.1;
+    state.scale = Math.max(0.42, Math.min(2.8, state.scale * delta));
+    updateTransform();
+  }, { passive: false });
+
+  svg.addEventListener('pointerdown', (event) => {
+    if (event.target.closest?.('.coral-node')) return;
+    panning = { x: event.clientX, y: event.clientY, panX: state.panX, panY: state.panY };
+    svg.setPointerCapture(event.pointerId);
+  });
+
+  svg.addEventListener('pointermove', (event) => {
+    if (panning) {
+      state.panX = panning.panX + event.clientX - panning.x;
+      state.panY = panning.panY + event.clientY - panning.y;
+      updateTransform();
+      return;
+    }
+
+    if (dragging) {
+      const point = toWorld(event);
+      dragging.node.x = point.x;
+      dragging.node.y = point.y;
+      dragging.moved = true;
+      renderPositions();
+    }
+  });
+
+  svg.addEventListener('pointerup', (event) => {
+    if (dragging && !dragging.moved) selectNode(dragging.node.id);
+    dragging = null;
+    panning = null;
+    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+  });
+
+  function layoutNodes(nodes) {
+    const domains = nodes.filter((node) => node.type === 'domain').sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    const domainCenters = new Map();
+    const span = Math.max(500, domains.length * 210);
+
+    domains.forEach((domain, index) => {
+      const t = domains.length === 1 ? 0.5 : index / (domains.length - 1);
+      const x = -span / 2 + span * t;
+      const y = 190 + Math.sin(t * Math.PI * 1.15) * 42;
+      domain.x = x;
+      domain.y = y;
+      domainCenters.set(domain.domain, { x, y, size: domain.size });
+    });
+
+    const byDomain = new Map();
+    for (const node of nodes.filter((candidate) => candidate.type === 'capture')) {
+      const bucket = byDomain.get(node.domain) ?? [];
+      bucket.push(node);
+      byDomain.set(node.domain, bucket);
+    }
+
+    for (const [domain, bucket] of byDomain) {
+      const center = domainCenters.get(domain) ?? { x: seeded(domain) * 760 - 380, y: 190, size: 42 };
+      bucket.forEach((node, index) => {
+        const seed = seeded(node.id);
+        const ring = Math.floor(index / 5);
+        const slot = bucket.length === 1 ? 0.5 : (index % 5) / Math.max(1, Math.min(4, bucket.length - 1));
+        const angle = Math.PI * (1.12 + slot * 0.76) + (seed - 0.5) * 0.22;
+        const radius = center.size * 0.92 + node.size + 8 + ring * 22 + seed * 10;
+        node.x = center.x + Math.cos(angle) * radius;
+        node.y = center.y + Math.sin(angle) * radius * 0.72 - 6;
+      });
+    }
+
+    nodes.filter((node) => node.type === 'term').forEach((node, index, list) => {
+      const t = list.length === 1 ? 0.5 : index / (list.length - 1);
+      node.x = -520 + 1040 * t;
+      node.y = -250 - Math.sin(t * Math.PI * 2) * 72;
+    });
+  }
+
+  function render() {
+    edgeLayer.replaceChildren();
+    nodeLayer.replaceChildren();
+    const selectedNeighbors = state.selected ? neighbors.get(state.selected) ?? new Set() : new Set();
+    const visibleNodes = new Set([...nodeById.values()].filter(isVisible).map((node) => node.id));
+    let visibleTotal = 0;
+
+    for (const edge of edgeList) {
+      if (!visibleNodes.has(edge.source) || !visibleNodes.has(edge.target)) continue;
+      const source = nodeById.get(edge.source);
+      const target = nodeById.get(edge.target);
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('class', edgeClass(edge, selectedNeighbors));
+      path.setAttribute('data-edge-id', edge.id);
+      path.setAttribute('data-source', edge.source);
+      path.setAttribute('data-target', edge.target);
+      path.setAttribute('d', edgePath(source, target, edge));
+      edgeLayer.append(path);
+    }
+
+    for (const node of nodeById.values()) {
+      if (!isVisible(node)) continue;
+      visibleTotal += 1;
+      const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      group.setAttribute('class', nodeClass(node, selectedNeighbors));
+      group.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
+      group.setAttribute('tabindex', '0');
+      group.setAttribute('role', 'button');
+      group.setAttribute('aria-label', nodeAriaLabel(node));
+      group.dataset.nodeId = node.id;
+
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      hit.setAttribute('class', 'hit');
+      hit.setAttribute('r', Math.max(28, node.size + 20));
+      group.append(hit);
+
+      const mark = nodeShape(node);
+      group.append(mark);
+
+      appendNodeLabel(group, node);
+
+      group.addEventListener('pointerdown', (event) => {
+        event.stopPropagation();
+        dragging = { node, moved: false };
+        svg.setPointerCapture(event.pointerId);
+      });
+      group.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectNode(node.id);
+        }
+      });
+      nodeLayer.append(group);
+    }
+
+    if (visibleCount) visibleCount.textContent = visibleTotal.toLocaleString() + ' visible items';
+  }
+
+  function renderPositions() {
+    nodeLayer.querySelectorAll('.coral-node').forEach((group) => {
+      const node = nodeById.get(group.dataset.nodeId);
+      group.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
+    });
+    edgeLayer.querySelectorAll('.coral-edge').forEach((path) => {
+      path.setAttribute('d', edgePath(nodeById.get(path.dataset.source), nodeById.get(path.dataset.target), { id: path.dataset.edgeId, type: path.classList.contains('is-term') ? 'term' : 'domain' }));
+    });
+  }
+
+  function selectNode(id) {
+    state.selected = id;
+    updateDrawer(nodeById.get(id));
+    render();
+  }
+
+  function updateDrawer(node) {
+    if (!node) return;
+    drawerTitle.textContent = node.label || 'Untitled node';
+    drawerBody.replaceChildren();
+
+    if (node.type === 'capture') {
+      drawerBody.append(field('type', 'saved page polyp'));
+      drawerBody.append(field('source site', node.domain));
+      drawerBody.append(field('captured', formatDate(node.captured_at)));
+      drawerBody.append(field('tool', node.tool));
+      drawerBody.append(linkField('url', node.url));
+      drawerBody.append(field('query', node.query || 'unknown'));
+      drawerBody.append(field('chars', number(node.text_length)));
+      const pre = document.createElement('pre');
+      pre.className = 'coral-drawer-preview';
+      pre.textContent = node.text_preview || 'No text preview saved.';
+      drawerBody.append(pre);
+      return;
+    }
+
+    if (node.type === 'domain') {
+      drawerBody.append(field('type', 'source site reef base'));
+      drawerBody.append(field('saved pages', number(node.count)));
+      drawerBody.append(field('raw chars', number(node.text_length)));
+      drawerBody.append(field('last captured', formatDate(node.last_captured_at)));
+      return;
+    }
+
+    drawerBody.append(field('type', 'topic signal'));
+    drawerBody.append(field('saved pages', number(node.count)));
+    drawerBody.append(field('score', number(node.score)));
+  }
+
+  function isVisible(node) {
+    if (!state.visibleTypes.has(node.type)) return false;
+    if (!state.query) return true;
+    return matchesQuery(node) || [...(neighbors.get(node.id) ?? [])].some((id) => matchesQuery(nodeById.get(id)));
+  }
+
+  function matchesQuery(node) {
+    if (!state.query) return false;
+    const haystack = [node.label, node.domain, node.url, node.title, node.query, node.topic, node.term, node.tool, node.text_preview]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(state.query);
+  }
+
+  function nodeAriaLabel(node) {
+    if (node.type === 'domain') return 'source site: ' + node.label + ', ' + number(node.count) + ' saved pages';
+    if (node.type === 'capture') return 'saved page: ' + node.label;
+    return 'topic signal: ' + node.label;
+  }
+
+  function appendNodeLabel(group, node) {
+    if (node.type === 'domain') {
+      const label = shorten(node.label, 24);
+      const count = number(node.count) + ' saved pages';
+      const width = Math.max(114, Math.min(210, label.length * 7.2 + 24));
+      const x = node.size * 0.7;
+      const y = -8;
+      const plaque = svgEl('g', { class: 'source-plaque-group', transform: 'translate(' + x.toFixed(2) + ' ' + y.toFixed(2) + ')' });
+      plaque.append(svgEl('rect', { class: 'source-plaque', x: 0, y: -20, width, height: 42, rx: 12, ry: 12 }));
+      const title = svgEl('text', { class: 'source-label', x: 12, y: -3 });
+      title.textContent = label;
+      const subtitle = svgEl('text', { class: 'source-count', x: 12, y: 14 });
+      subtitle.textContent = count;
+      plaque.append(title, subtitle);
+      group.append(plaque);
+      return;
+    }
+
+    if (node.id !== state.selected && !matchesQuery(node)) return;
+
+    const label = svgEl('text', { class: 'page-label', x: node.size + 9, y: 4 });
+    label.textContent = node.type === 'capture' ? shorten(node.label, 30) : shorten(node.label, 24);
+    group.append(label);
+  }
+
+  function nodeClass(node, selectedNeighbors) {
+    const classes = ['coral-node', 'is-' + node.type];
+    if (state.query && !matchesQuery(node)) classes.push('is-muted');
+    if (state.query && matchesQuery(node)) classes.push('is-match');
+    if (state.selected === node.id) classes.push('is-selected');
+    if (selectedNeighbors.has(node.id)) classes.push('is-neighbor');
+    if (state.selected && state.selected !== node.id && !selectedNeighbors.has(node.id)) classes.push('is-muted');
+    return classes.join(' ');
+  }
+
+  function edgeClass(edge, selectedNeighbors) {
+    const classes = ['coral-edge', 'is-' + edge.type];
+    if (state.selected && (edge.source === state.selected || edge.target === state.selected || selectedNeighbors.has(edge.source) || selectedNeighbors.has(edge.target))) classes.push('is-active');
+    else if (state.selected) classes.push('is-muted');
+    return classes.join(' ');
+  }
+
+  function nodeShape(node) {
+    if (node.type === 'term') {
+      return planktonShape(node);
+    }
+
+    if (node.type === 'domain') {
+      return colonyShape(node);
+    }
+
+    return polypShape(node);
+  }
+
+  function colonyShape(node) {
+    const group = svgEl('g', { class: 'mark colony-mark' });
+    const seed = seeded(node.id);
+    const size = node.size;
+    const shadow = svgEl('path', { class: 'colony-shadow', d: blobPath(size * 1.12, seed + 0.11), transform: 'translate(0 9)' });
+    const halo = svgEl('path', { class: 'selection-halo', d: blobPath(size * 1.34, seed + 0.21) });
+    const base = svgEl('path', { class: 'colony-base', d: blobPath(size * 1.06, seed) });
+
+    group.append(shadow, halo, base);
+
+    for (let i = 0; i < 7; i += 1) {
+      const angle = (Math.PI * 2 * i) / 7 + seed * 0.8;
+      const distance = size * (0.22 + seeded(node.id + ':lobe:' + i) * 0.42);
+      const rx = size * (0.22 + seeded(node.id + ':rx:' + i) * 0.12);
+      const ry = size * (0.14 + seeded(node.id + ':ry:' + i) * 0.14);
+      group.append(svgEl('ellipse', {
+        class: 'colony-lobe',
+        cx: Math.cos(angle) * distance,
+        cy: Math.sin(angle) * distance * 0.78,
+        rx,
+        ry,
+        transform: 'rotate(' + ((angle * 180) / Math.PI + seeded(node.id + ':rot:' + i) * 40).toFixed(2) + ')',
+      }));
+    }
+
+    for (let i = 0; i < 5; i += 1) {
+      const contourSize = size * (0.22 + i * 0.14);
+      group.append(svgEl('path', {
+        class: 'colony-contour',
+        d: blobPath(contourSize, seed + i * 0.173),
+        transform: 'translate(' + ((seeded(node.id + ':cx:' + i) - 0.5) * size * 0.2).toFixed(2) + ' ' + ((seeded(node.id + ':cy:' + i) - 0.5) * size * 0.16).toFixed(2) + ')',
+      }));
+    }
+
+    for (let i = 0; i < 16; i += 1) {
+      const angle = seeded(node.id + ':speck-a:' + i) * Math.PI * 2;
+      const distance = seeded(node.id + ':speck-d:' + i) * size * 0.78;
+      group.append(svgEl('circle', {
+        class: 'colony-speck',
+        cx: Math.cos(angle) * distance,
+        cy: Math.sin(angle) * distance * 0.72,
+        r: 0.9 + seeded(node.id + ':speck-r:' + i) * 1.8,
+      }));
+    }
+
+    return group;
+  }
+
+  function polypShape(node) {
+    const group = svgEl('g', { class: 'mark polyp-mark' });
+    const seed = seeded(node.id);
+    const size = node.size;
+    const halo = svgEl('circle', { class: 'selection-halo', r: size * 1.62 });
+    group.append(halo);
+
+    for (let i = 0; i < 7; i += 1) {
+      const angle = (Math.PI * 2 * i) / 7 + seed * 0.9;
+      const distance = i === 0 ? 0 : size * (0.22 + seeded(node.id + ':tube-d:' + i) * 0.34);
+      const x = Math.cos(angle) * distance;
+      const y = Math.sin(angle) * distance * 0.58;
+      const width = size * (0.28 + seeded(node.id + ':tube-w:' + i) * 0.11);
+      const height = size * (0.68 + seeded(node.id + ':tube-h:' + i) * 0.44);
+      const rotate = (Math.cos(angle) * 12 + (seeded(node.id + ':tube-r:' + i) - 0.5) * 18).toFixed(2);
+      const tube = svgEl('g', { transform: 'translate(' + x.toFixed(2) + ' ' + y.toFixed(2) + ') rotate(' + rotate + ')' });
+
+      tube.append(svgEl('ellipse', { class: 'tube-shadow', cx: 0, cy: size * 0.06, rx: width * 0.72, ry: width * 0.28 }));
+      tube.append(svgEl('path', { class: 'tube-body', d: tubePath(width, height) }));
+      tube.append(svgEl('ellipse', { class: 'tube-mouth', cx: 0, cy: -height, rx: width * 0.52, ry: width * 0.25 }));
+      tube.append(svgEl('ellipse', { class: 'tube-throat', cx: 0, cy: -height, rx: width * 0.22, ry: width * 0.1 }));
+      group.append(tube);
+    }
+
+    for (let i = 0; i < 5; i += 1) {
+      const angle = Math.PI * (1.05 + i * 0.18) + seed * 0.22;
+      const x = Math.cos(angle) * size * 0.92;
+      const y = Math.sin(angle) * size * 0.45 + size * 0.12;
+      const cx = Math.cos(angle) * size * 0.42;
+      const cy = Math.sin(angle) * size * 0.25;
+      group.append(svgEl('path', { class: 'tube-sprout', d: 'M 0 0 Q ' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + x.toFixed(2) + ' ' + y.toFixed(2) }));
+    }
+
+    return group;
+  }
+
+  function tubePath(width, height) {
+    return 'M ' + (-width * 0.48).toFixed(2) + ' 0 C ' + (-width * 0.72).toFixed(2) + ' ' + (-height * 0.34).toFixed(2) + ' ' + (-width * 0.5).toFixed(2) + ' ' + (-height * 0.76).toFixed(2) + ' 0 ' + (-height).toFixed(2) + ' C ' + (width * 0.5).toFixed(2) + ' ' + (-height * 0.76).toFixed(2) + ' ' + (width * 0.72).toFixed(2) + ' ' + (-height * 0.34).toFixed(2) + ' ' + (width * 0.48).toFixed(2) + ' 0 Z';
+  }
+
+  function planktonShape(node) {
+    const group = svgEl('g', { class: 'mark plankton-mark' });
+    const size = node.size;
+    group.append(svgEl('circle', { class: 'selection-halo', r: size * 1.8 }));
+
+    for (let i = 0; i < 4; i += 1) {
+      const angle = (Math.PI * 2 * i) / 4 + seeded(node.id) * 0.4;
+      group.append(svgEl('line', {
+        class: 'plankton-ray',
+        x1: Math.cos(angle) * size * 0.75,
+        y1: Math.sin(angle) * size * 0.75,
+        x2: Math.cos(angle) * size * 1.36,
+        y2: Math.sin(angle) * size * 1.36,
+      }));
+    }
+
+    const diamond = svgEl('path', {
+      class: 'plankton-core',
+      d: 'M 0 ' + (-size).toFixed(2) + ' L ' + size.toFixed(2) + ' 0 L 0 ' + size.toFixed(2) + ' L ' + (-size).toFixed(2) + ' 0 Z',
+      transform: 'rotate(' + (seeded(node.id) * 26).toFixed(2) + ')',
+    });
+    group.append(diamond);
+    return group;
+  }
+
+  function edgePath(source, target, edge = {}) {
+    const midX = (source.x + target.x) / 2;
+    const midY = (source.y + target.y) / 2;
+    const seed = seeded(edge.id || source.id + target.id);
+    const bend = edge.type === 'term' ? 90 : 42;
+    const lift = (seed - 0.5) * bend - Math.min(64, Math.abs(source.x - target.x) * 0.04);
+    const c1x = source.x + (midX - source.x) * 0.66 + (seed - 0.5) * 34;
+    const c1y = source.y + (midY - source.y) * 0.42 + lift;
+    const c2x = target.x + (midX - target.x) * 0.66 - (seed - 0.5) * 34;
+    const c2y = target.y + (midY - target.y) * 0.42 + lift * 0.75;
+    return 'M ' + source.x + ' ' + source.y + ' C ' + c1x + ' ' + c1y + ' ' + c2x + ' ' + c2y + ' ' + target.x + ' ' + target.y;
+  }
+
+  function svgEl(name, attrs = {}) {
+    const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+    for (const [key, value] of Object.entries(attrs)) {
+      element.setAttribute(key, value);
+    }
+    return element;
+  }
+
+  function updateTransform() {
+    const rect = svg.getBoundingClientRect();
+    world.setAttribute('transform', 'translate(' + (rect.width / 2 + state.panX) + ' ' + (rect.height / 2 + state.panY) + ') scale(' + state.scale + ')');
+  }
+
+  function toWorld(event) {
+    const rect = svg.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left - rect.width / 2 - state.panX) / state.scale,
+      y: (event.clientY - rect.top - rect.height / 2 - state.panY) / state.scale,
+    };
+  }
+
+  function field(label, value) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'coral-drawer-field';
+    const key = document.createElement('span');
+    key.textContent = label;
+    const strong = document.createElement('strong');
+    strong.textContent = value || 'unknown';
+    wrapper.append(key, strong);
+    return wrapper;
+  }
+
+  function linkField(label, href) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'coral-drawer-field';
+    const key = document.createElement('span');
+    key.textContent = label;
+    const link = document.createElement('a');
+    link.href = href;
+    link.target = '_blank';
+    link.rel = 'noreferrer';
+    link.textContent = href;
+    wrapper.append(key, link);
+    return wrapper;
+  }
+
+  function blobPath(size, seed) {
+    const points = [];
+    for (let i = 0; i < 12; i += 1) {
+      const angle = (Math.PI * 2 * i) / 12;
+      const wobble = 0.82 + 0.28 * seeded(seed + ':' + i);
+      points.push([Math.cos(angle) * size * wobble, Math.sin(angle) * size * wobble]);
+    }
+    return points.map(([x, y], index) => (index === 0 ? 'M' : 'L') + ' ' + x.toFixed(2) + ' ' + y.toFixed(2)).join(' ') + ' Z';
+  }
+
+  function seeded(value) {
+    let hash = 2166136261;
+    const text = String(value ?? '');
+    for (let i = 0; i < text.length; i += 1) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) / 4294967295;
+  }
+
+  function shorten(value, max) {
+    const text = String(value ?? '');
+    return text.length <= max ? text : text.slice(0, max - 1) + '...';
+  }
+
+  function formatDate(value) {
+    if (!value) return 'unknown';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toISOString().slice(0, 10);
+  }
+
+  function number(value) {
+    return new Intl.NumberFormat('en-US', { notation: Number(value ?? 0) >= 100000 ? 'compact' : 'standard' }).format(Number(value ?? 0));
+  }
+})();`;
+}
+
+function stat(label, value) {
+  return `<div><dt>${escapeHtml(label)}</dt><dd>${number(value)}</dd></div>`;
+}
+
+function number(value) {
+  return new Intl.NumberFormat("en-US", { notation: Number(value ?? 0) >= 100000 ? "compact" : "standard" }).format(Number(value ?? 0));
+}
+
+function safeJson(value) {
+  return JSON.stringify(value).replaceAll("<", "\\u003c").replaceAll("&", "\\u0026");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}

@@ -1,0 +1,50 @@
+{
+  "name": "@unchainedsky/coral",
+  "version": "0.1.0",
+  "description": "Passive append-only knowledge reef for Search Agent Sky.",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./ui": {
+      "types": "./src/index.d.ts",
+      "import": "./src/ui.js"
+    },
+    "./explorer": {
+      "types": "./src/index.d.ts",
+      "import": "./src/explorer.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "examples/demo.js",
+    "examples/searchagentsky-producer.js",
+    "examples/ui-demo.js",
+    "examples/coral-ui-demo.html",
+    "examples/coral-explorer-demo.html",
+    "examples/reef-renderer-deck.html",
+    "examples/reef-fidelity-spike.html",
+    "README.md"
+  ],
+  "scripts": {
+    "demo": "node examples/demo.js",
+    "demo:ui": "node examples/ui-demo.js",
+    "lint": "node --check src/*.js && node --check test/*.test.js && node --check examples/*.js",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "agent-memory",
+    "jsonl",
+    "searchagentsky",
+    "research"
+  ],
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  }
+}
