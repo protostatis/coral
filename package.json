@@ -34,6 +34,7 @@
     "examples/reef-renderer-deck.html",
     "examples/reef-fidelity-spike.html",
     "examples/reef-fidelity-demo.html",
+    "examples/reef-realistic-data-demo.html",
     "README.md"
   ],
   "scripts": {

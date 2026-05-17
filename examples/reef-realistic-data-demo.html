@@ -1,0 +1,1986 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coral Realistic Data Reef Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #e7f5ee;
+      --muted: #9abdb4;
+      --dim: #6f9b92;
+      --line: rgba(209, 244, 232, 0.18);
+      --panel: rgba(4, 18, 22, 0.72);
+      --panel-strong: rgba(3, 15, 18, 0.88);
+      --aqua: #8bdccc;
+      --sand: #d9bc86;
+      --clay: #b98158;
+      --deep: #031216;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --serif: Georgia, "Times New Roman", serif;
+      --mono: "SFMono-Regular", "Roboto Mono", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--deep);
+      color: var(--ink);
+      font-family: var(--sans);
+    }
+
+    button,
+    input { font: inherit; }
+
+    a { color: inherit; }
+
+    #reef-root,
+    #reef-root canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #reef-root canvas {
+      cursor: grab;
+      touch-action: none;
+    }
+
+    body.is-picking #reef-root canvas { cursor: pointer; }
+    body.is-dragging #reef-root canvas { cursor: grabbing; }
+
+    .water-volume,
+    .grain,
+    .vignette,
+    .label-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .water-volume {
+      z-index: 2;
+      background:
+        radial-gradient(circle at 48% 0%, rgba(111, 202, 217, 0.22), transparent 34rem),
+        linear-gradient(180deg, rgba(8, 81, 102, 0.34), rgba(2, 24, 30, 0.08) 46%, rgba(0, 8, 10, 0.36));
+      mix-blend-mode: screen;
+    }
+
+    .grain {
+      z-index: 3;
+      opacity: 0.10;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,0.65) 0 0.75px, transparent 1px),
+        radial-gradient(circle, rgba(144,213,202,0.25) 0 0.8px, transparent 1px);
+      background-size: 83px 83px, 137px 137px;
+      animation: grain-drift 18s linear infinite;
+    }
+
+    .vignette {
+      z-index: 4;
+      background:
+        radial-gradient(ellipse at 50% 42%, transparent 0 42%, rgba(1, 8, 10, 0.52) 100%),
+        linear-gradient(90deg, rgba(1, 8, 10, 0.55), transparent 24%, transparent 76%, rgba(1, 8, 10, 0.6));
+    }
+
+    .label-layer { z-index: 8; }
+
+    @keyframes grain-drift {
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(36px, 22px, 0); }
+    }
+
+    .hud {
+      position: fixed;
+      z-index: 10;
+      inset: 20px;
+      display: grid;
+      grid-template-columns: minmax(292px, 390px) minmax(0, 1fr) minmax(292px, 380px);
+      grid-template-rows: auto 1fr auto;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .panel {
+      pointer-events: auto;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(9, 39, 45, 0.75), rgba(3, 16, 19, 0.72)), var(--panel);
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(18px) saturate(1.12);
+    }
+
+    .intro {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      align-self: start;
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      padding: 24px;
+    }
+
+    .inspector {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+      align-self: start;
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      padding: 20px;
+    }
+
+    .notes {
+      grid-column: 2 / span 2;
+      grid-row: 3;
+      align-self: end;
+      padding: 14px;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--aqua);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      font-family: var(--serif);
+      letter-spacing: -0.055em;
+      line-height: 0.95;
+    }
+
+    h1 { font-size: clamp(3.1rem, 6.2vw, 5.8rem); }
+    h2 { font-size: clamp(2rem, 3.5vw, 3.5rem); }
+
+    p {
+      color: var(--muted);
+      line-height: 1.56;
+    }
+
+    .lede {
+      margin: 18px 0 16px;
+      color: #cbe6df;
+      font-size: 1rem;
+    }
+
+    .source-status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      max-width: 100%;
+      margin: 2px 0 14px;
+      border: 1px solid rgba(211, 239, 226, 0.2);
+      border-radius: 999px;
+      color: #dcefe8;
+      background: rgba(5, 24, 28, 0.58);
+      padding: 0 11px;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .search-box {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin: 16px 0 12px;
+    }
+
+    .search-box input {
+      min-width: 0;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      outline: 0;
+      color: var(--ink);
+      background: rgba(5, 20, 24, 0.48);
+      padding: 0 14px;
+    }
+
+    .search-box input::placeholder { color: rgba(203, 230, 223, 0.48); }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 20px;
+    }
+
+    button {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(4, 33, 38, 0.58);
+      padding: 0 14px;
+      font: 900 0.68rem/1 var(--mono);
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    button:hover,
+    button[aria-pressed="true"] {
+      color: #041216;
+      border-color: rgba(211, 239, 226, 0.8);
+      background: linear-gradient(135deg, #d8bf87, #8bdccc);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 16px 0 10px;
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .dna-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .dna-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 68px;
+      border-radius: 18px;
+      padding: 10px;
+      text-align: left;
+      text-transform: none;
+      letter-spacing: 0;
+      font-family: var(--sans);
+      font-weight: 700;
+    }
+
+    .dna-card.is-active {
+      border-color: rgba(230, 221, 188, 0.72);
+      background: rgba(126, 111, 82, 0.28);
+    }
+
+    .swatch {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--swatch);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 14px 24px rgba(0,0,0,0.24);
+    }
+
+    .dna-card strong {
+      display: block;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .dna-card span:not(.swatch) {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.35;
+    }
+
+    .dna-card em {
+      display: block;
+      margin-top: 7px;
+      color: rgba(203, 230, 223, 0.72);
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      font-style: normal;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .species {
+      display: inline-flex;
+      margin: 16px 0 10px;
+      border-radius: 999px;
+      color: #091314;
+      background: linear-gradient(135deg, var(--sand), #a9d4c8);
+      padding: 10px 14px;
+      font: 900 0.68rem/1 var(--mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .stat {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(5, 20, 24, 0.46);
+    }
+
+    .stat span {
+      display: block;
+      color: var(--aqua);
+      font: 900 0.58rem/1 var(--mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 1.3rem;
+    }
+
+    .inside-list,
+    .mapping,
+    .capture-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .inside-row,
+    .mapping div,
+    .capture-list a,
+    .capture-list div {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(5, 20, 24, 0.46);
+      padding: 11px 12px;
+    }
+
+    .inside-row {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 10px;
+    }
+
+    .inside-row strong,
+    .mapping strong,
+    .capture-list strong {
+      display: block;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .inside-row strong { color: var(--aqua); }
+
+    .inside-row span,
+    .mapping span,
+    .capture-list span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.38;
+    }
+
+    .capture-list a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .capture-list a:hover { border-color: rgba(230, 221, 188, 0.5); }
+
+    .note-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .note-grid div {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(4, 18, 22, 0.5);
+    }
+
+    .note-grid strong {
+      display: block;
+      color: var(--ink);
+      font: 900 0.65rem/1 var(--mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .note-grid span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.42;
+    }
+
+    .reef-label {
+      position: absolute;
+      min-width: 140px;
+      opacity: 0;
+      filter: blur(2px);
+      transition: opacity 180ms ease, filter 180ms ease;
+    }
+
+    body.dna-lens .reef-label,
+    .reef-label.is-active {
+      opacity: 1;
+      filter: blur(0);
+    }
+
+    .reef-label > div {
+      border: 1px solid rgba(209, 244, 232, 0.24);
+      border-radius: 14px;
+      background: rgba(3, 15, 18, 0.78);
+      box-shadow: 0 14px 36px rgba(0,0,0,0.28);
+      padding: 8px 10px;
+      backdrop-filter: blur(12px);
+    }
+
+    .reef-label strong {
+      display: block;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .reef-label span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .label-dot {
+      position: absolute;
+      left: 50%;
+      bottom: -8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--sand);
+      box-shadow: 0 0 14px rgba(217, 188, 134, 0.72);
+      transform: translateX(-50%);
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 20;
+      left: 50%;
+      bottom: 22px;
+      max-width: min(620px, calc(100vw - 40px));
+      transform: translate(-50%, 16px);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink);
+      background: var(--panel-strong);
+      padding: 12px 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.34);
+    }
+
+    .toast.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 1180px) {
+      .hud { grid-template-columns: minmax(280px, 360px) 1fr; }
+      .inspector { grid-column: 2; }
+      .notes { grid-column: 1 / span 2; }
+      .note-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+    }
+
+    @media (max-width: 860px) {
+      body { overflow: auto; }
+      #reef-root,
+      #reef-root canvas { min-height: 840px; }
+      .hud {
+        position: relative;
+        inset: auto;
+        grid-template-columns: 1fr;
+        padding: 16px;
+      }
+      .intro,
+      .inspector,
+      .notes {
+        grid-column: 1;
+        grid-row: auto;
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .search-box,
+      .stat-grid,
+      .note-grid,
+      .inside-row { grid-template-columns: 1fr; }
+      h1 { font-size: clamp(2.7rem, 17vw, 4rem); }
+    }
+  </style>
+</head>
+<body>
+  <div id="reef-root" aria-hidden="true"></div>
+  <div class="water-volume" data-water-layer></div>
+  <div class="grain" data-water-layer></div>
+  <div class="vignette"></div>
+  <div class="label-layer" data-label-layer></div>
+
+  <main class="hud">
+    <section class="panel intro" aria-label="Realistic reef controls">
+      <p class="eyebrow">Data-backed realism pass</p>
+      <h1>Evidence reef with colony DNA.</h1>
+      <p class="lede">This merges the realistic fidelity pass with Coral's read-time reef model. Similar human-driven artifacts co-grow as muted reef colonies, while the inspector exposes domains, signals, tools, and raw capture links.</p>
+      <div class="source-status" data-source-status>Static fallback reef</div>
+
+      <div class="search-box">
+        <input data-query type="search" placeholder="Try: housing, childcare, stocks, docs">
+        <button type="button" data-search>Pulse</button>
+      </div>
+
+      <div class="controls">
+        <button type="button" data-fit>Fit reef</button>
+        <button type="button" data-lens aria-pressed="false">DNA lens</button>
+        <button type="button" data-water aria-pressed="true">Water</button>
+        <button type="button" data-fish aria-pressed="true">Fish</button>
+      </div>
+
+      <div class="section-title"><span>Colony DNA</span><span>read-time groups</span></div>
+      <div class="dna-list" data-dna-list></div>
+    </section>
+
+    <aside class="panel inspector" aria-label="Selected colony details">
+      <p class="eyebrow">Selected colony</p>
+      <h2 data-title>Stocks reef head</h2>
+      <div class="species" data-dna>branching acropora</div>
+      <p data-copy>Market artifacts co-grow as branching evidence: ticker pages, movers, filings, and market commentary bud from nearby stalks.</p>
+
+      <div class="stat-grid">
+        <div class="stat"><span>Captures</span><strong data-captures>78</strong></div>
+        <div class="stat"><span>Sources</span><strong data-sources>7</strong></div>
+        <div class="stat"><span>Growth</span><strong data-growth>Fresh</strong></div>
+      </div>
+
+      <div class="section-title"><span>What's inside</span><span>evidence trail</span></div>
+      <div class="inside-list" data-inside-list></div>
+
+      <div class="section-title"><span>Mapping rule</span><span>biology to UX</span></div>
+      <div class="mapping">
+        <div><strong>Similarity</strong><span data-similarity>Similar captures bud from nearby tissue instead of being linked with visible edges.</span></div>
+        <div><strong>Recency</strong><span data-recency>Fresh captures are pale growth tips; older evidence thickens the skeleton.</span></div>
+        <div><strong>Inspection</strong><span data-inspection>Individual pages appear at macro range as polyps, source patches, and raw links.</span></div>
+      </div>
+
+      <div class="section-title"><span>Recent artifacts</span><span>raw captures</span></div>
+      <div class="capture-list" data-capture-list></div>
+    </aside>
+
+    <section class="panel notes" aria-label="Rendering changes">
+      <div class="note-grid">
+        <div><strong>Model</strong><span>Consumes embedded Coral reef JSON, <code>?api=/api/coral/reef</code>, or a static fallback.</span></div>
+        <div><strong>Growth</strong><span>Capture counts, source domains, and recency alter colony density, clumps, and pale tips.</span></div>
+        <div><strong>Realism</strong><span>Uses muted material, rough substrate, contact shadows, sprite bubbles, marine snow, and small desaturated fish.</span></div>
+        <div><strong>Evidence</strong><span>DNA cards and colony clicks reveal domains, terms, tools, and raw capture URLs.</span></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" data-toast></div>
+  <script id="coral-reef-data" type="application/json"></script>
+
+  <script type="module">
+    import * as THREE from 'https://esm.sh/three@0.160.0';
+    import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+    const fallbackColonies = [
+      {
+        id: 'stocks',
+        label: 'Stocks reef head',
+        content: 'Stocks',
+        dna: 'branching acropora',
+        morphology: 'branching',
+        color: '#b98158',
+        swatch: 'linear-gradient(135deg, #e4c298, #b98158 55%, #4f3125)',
+        position: [-2.8, -0.52, 0.35],
+        captures: 78,
+        sources: 7,
+        growth: 'Fresh',
+        tags: ['stock', 'stocks', 'market', 'ticker', 'finance', 'equity'],
+        copy: 'Market artifacts co-grow as branching evidence: ticker pages, movers, filings, and market commentary bud from nearby stalks.',
+        similarity: 'Ticker, sector, and market-query overlap create neighboring branch clusters at read time.',
+        recency: 'Fresh market captures become pale growth tips; older evidence thickens the darker skeleton.',
+        inspection: 'Dive close to inspect recent captures, source domains, and query trails on branch tips.',
+        top_domains: [{ domain: 'finance.yahoo.com', count: 2 }, { domain: 'finviz.com', count: 2 }, { domain: 'nasdaq.com', count: 1 }],
+        top_terms: [{ term: 'trending stocks', count: 5 }, { term: 'AI chip demand', count: 3 }, { term: 'market movers', count: 2 }],
+        tool_counts: [{ tool: 'ddm', count: 5 }],
+        recent_captures: [
+          { title: 'Finviz Top Gainers', domain: 'finviz.com', tool: 'ddm', captured_at: '2026-05-15T14:01:00Z', url: 'https://finviz.com/screener.ashx?v=340&s=ta_topgainers' },
+          { title: 'NVIDIA Stock Quote', domain: 'finance.yahoo.com', tool: 'ddm', captured_at: '2026-05-15T14:03:00Z', url: 'https://finance.yahoo.com/quote/NVDA' }
+        ]
+      },
+      {
+        id: 'news',
+        label: 'News fan colony',
+        content: 'News',
+        dna: 'weathered sea fan',
+        morphology: 'fan',
+        color: '#b66f68',
+        swatch: 'linear-gradient(135deg, #d6ad8c, #b66f68 54%, #5b3340)',
+        position: [-0.1, -0.58, -0.16],
+        captures: 52,
+        sources: 11,
+        growth: 'Current',
+        tags: ['news', 'article', 'press', 'publisher', 'headline'],
+        copy: 'News behaves like a fan in current: story strands spread from publishers, crosslink into threads, and fade into blue haze as they age.',
+        similarity: 'Shared entities and storylines form ribs in the same fan instead of separate topic nodes.',
+        recency: 'Breaking stories brighten the outer rim where water current is strongest.',
+        inspection: 'A selected rib can unfold into headline captures and source provenance.',
+        top_domains: [{ domain: 'reuters.com', count: 3 }, { domain: 'apnews.com', count: 2 }, { domain: 'bbc.com', count: 2 }],
+        top_terms: [{ term: 'latest coverage', count: 5 }, { term: 'policy change', count: 3 }, { term: 'public response', count: 2 }],
+        tool_counts: [{ tool: 'get_text', count: 4 }, { tool: 'ddm', count: 3 }],
+        recent_captures: [
+          { title: 'AI chip demand lifts semiconductor shares', domain: 'reuters.com', tool: 'get_text', captured_at: '2026-05-15T14:08:00Z', url: 'https://www.reuters.com/technology/ai-chip-demand-markets-demo' }
+        ]
+      },
+      {
+        id: 'docs',
+        label: 'Docs plate shelf',
+        content: 'Docs',
+        dna: 'layered plate coral',
+        morphology: 'plate',
+        color: '#c8aa74',
+        swatch: 'linear-gradient(135deg, #e5d0a4, #c8aa74 54%, #61584b)',
+        position: [2.45, -0.62, 0.16],
+        captures: 41,
+        sources: 5,
+        growth: 'Layered',
+        tags: ['docs', 'documentation', 'wiki', 'guide', 'reference'],
+        copy: 'Documentation feels like stable shelves: broad, layered, and easy to skim from above, with individual pages nested on plate rims.',
+        similarity: 'Related references accrete as adjacent shelves, not as a force-directed cluster.',
+        recency: 'New pages appear as light rim growth on top of older shelves.',
+        inspection: 'Zoom reveals plate rings, page ridges, and canonical URLs.',
+        top_domains: [{ domain: 'docs.github.com', count: 2 }, { domain: 'developer.mozilla.org', count: 2 }, { domain: 'nodejs.org', count: 1 }],
+        top_terms: [{ term: 'runner limits', count: 2 }, { term: 'API reference', count: 2 }],
+        tool_counts: [{ tool: 'ddm', count: 4 }],
+        recent_captures: [
+          { title: 'GitHub Actions hosted runner docs', domain: 'docs.github.com', tool: 'ddm', captured_at: '2026-05-15T14:11:00Z', url: 'https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners' }
+        ]
+      },
+      {
+        id: 'filings',
+        label: 'Filings brain coral',
+        content: 'Filings',
+        dna: 'boulder brain coral',
+        morphology: 'brain',
+        color: '#8f7b96',
+        swatch: 'linear-gradient(135deg, #c9bab0, #8f7b96 52%, #403748)',
+        position: [-1.05, -0.8, 1.46],
+        captures: 29,
+        sources: 4,
+        growth: 'Slow',
+        tags: ['filing', 'filings', 'sec', '10-k', '10-q', 'regulatory'],
+        copy: 'Filings are dense and slow. The right form is a boulder colony with folded ridges, chronology grooves, and durable mass.',
+        similarity: 'Issuer, period, and filing type carve neighboring grooves into the same brain coral surface.',
+        recency: 'New filings brighten a ridge but do not quickly change the whole colony shape.',
+        inspection: 'Dive close to read grooves as filing sequences and revision history.',
+        top_domains: [{ domain: 'sec.gov', count: 4 }],
+        top_terms: [{ term: 'annual report', count: 2 }, { term: 'risk factors', count: 2 }],
+        tool_counts: [{ tool: 'navigate', count: 3 }],
+        recent_captures: [
+          { title: 'Example annual report filing', domain: 'sec.gov', tool: 'navigate', captured_at: '2026-05-15T14:14:00Z', url: 'https://www.sec.gov/Archives/edgar/data/demo/10-k.htm' }
+        ]
+      },
+      {
+        id: 'social',
+        label: 'Social anemone patch',
+        content: 'Social',
+        dna: 'seagrass anemone patch',
+        morphology: 'anemone',
+        color: '#82b680',
+        swatch: 'linear-gradient(135deg, #b8c99a, #82b680 52%, #294b3f)',
+        position: [1.16, -0.84, 1.62],
+        captures: 96,
+        sources: 9,
+        growth: 'Noisy',
+        tags: ['social', 'reddit', 'post', 'thread', 'comment', 'forum'],
+        copy: 'Social evidence is noisy, mobile, and locally repetitive. It looks like many small polyps pulsing around a patch, not one giant node.',
+        similarity: 'Repeated claims become dense neighboring tentacles. Outliers sit on the edge of the patch.',
+        recency: 'Recent discussion moves gently with current and warmer light.',
+        inspection: 'Close inspection filters the swarm down to threads, authors, and timestamps.',
+        top_domains: [{ domain: 'reddit.com', count: 5 }, { domain: 'news.ycombinator.com', count: 2 }, { domain: 'forum.example.org', count: 2 }],
+        top_terms: [{ term: 'discussion', count: 6 }, { term: 'practical concerns', count: 3 }],
+        tool_counts: [{ tool: 'ddm', count: 6 }],
+        recent_captures: [
+          { title: 'Investor thread about AI chip stocks', domain: 'reddit.com', tool: 'ddm', captured_at: '2026-05-15T14:17:00Z', url: 'https://www.reddit.com/r/investing/comments/demo_ai_chip_stocks/' }
+        ]
+      },
+      {
+        id: 'housing-affordability',
+        label: 'Housing shelf colony',
+        content: 'Housing affordability',
+        dna: 'low plate terrace',
+        morphology: 'plate',
+        color: '#b69d76',
+        swatch: 'linear-gradient(135deg, #d8c391, #b69d76 54%, #5f5848)',
+        position: [-3.65, -0.92, 2.42],
+        captures: 23,
+        sources: 5,
+        growth: 'Practical',
+        tags: ['housing', 'rent', 'lease', 'commute', 'family budget'],
+        copy: 'Housing captures grow as low shelves because people compare tradeoffs over time: rent, commute, schools, repairs, and budget pressure.',
+        similarity: 'Rent hikes, commute time, school quality, and lease terms stack into nearby terraces.',
+        recency: 'New affordability pages appear as lighter rims along existing shelves.',
+        inspection: 'The inspector keeps household constraints and source checklists visible.',
+        top_domains: [{ domain: 'housing.example.org', count: 1 }, { domain: 'tenant-help.example.net', count: 1 }],
+        top_terms: [{ term: 'rent increase', count: 2 }, { term: 'commute tradeoff', count: 2 }, { term: 'lease renewal', count: 1 }],
+        tool_counts: [{ tool: 'ddm', count: 1 }, { tool: 'get_text', count: 1 }],
+        recent_captures: [
+          { title: 'Families compare rent, commute, and school tradeoffs', domain: 'housing.example.org', tool: 'ddm', captured_at: '2026-05-15T15:02:00Z', url: 'https://housing.example.org/rent-vs-commute-family-budget' },
+          { title: 'Lease renewal checklist for rising housing costs', domain: 'tenant-help.example.net', tool: 'get_text', captured_at: '2026-05-15T15:05:00Z', url: 'https://tenant-help.example.net/lease-renewal-costs' }
+        ]
+      },
+      {
+        id: 'childcare-cost-planning',
+        label: 'Childcare anemone bed',
+        content: 'Childcare cost planning',
+        dna: 'short polyp nursery',
+        morphology: 'anemone',
+        color: '#8fb073',
+        swatch: 'linear-gradient(135deg, #c7cf95, #8fb073 52%, #40513b)',
+        position: [3.52, -0.94, 1.98],
+        captures: 19,
+        sources: 4,
+        growth: 'Local',
+        tags: ['childcare', 'daycare', 'waitlist', 'after school', 'parents'],
+        copy: 'Childcare pages form a short polyp nursery because the evidence is local, repetitive, and full of practical constraints.',
+        similarity: 'Waitlists, deposits, sick-day policies, and pickup windows cluster as neighboring tentacles.',
+        recency: 'Fresh planning pages move gently at the edge of the bed.',
+        inspection: 'Raw captures expose the actual checklists and family budget assumptions.',
+        top_domains: [{ domain: 'childcare.example.org', count: 1 }, { domain: 'family-budget.example.com', count: 1 }],
+        top_terms: [{ term: 'waitlist cost', count: 2 }, { term: 'after-school care', count: 1 }],
+        tool_counts: [{ tool: 'ddm', count: 1 }, { tool: 'navigate', count: 1 }],
+        recent_captures: [
+          { title: 'Childcare waitlist and cost planning worksheet', domain: 'childcare.example.org', tool: 'ddm', captured_at: '2026-05-15T15:08:00Z', url: 'https://childcare.example.org/waitlist-cost-calculator' },
+          { title: 'After-school care options and budget pressure', domain: 'family-budget.example.com', tool: 'navigate', captured_at: '2026-05-15T15:11:00Z', url: 'https://family-budget.example.com/after-school-care-options' }
+        ]
+      }
+    ];
+
+    const root = document.querySelector('#reef-root');
+    const labelLayer = document.querySelector('[data-label-layer]');
+    const dnaList = document.querySelector('[data-dna-list]');
+    const queryInput = document.querySelector('[data-query]');
+    const toast = document.querySelector('[data-toast]');
+    const ui = {
+      title: document.querySelector('[data-title]'),
+      dna: document.querySelector('[data-dna]'),
+      copy: document.querySelector('[data-copy]'),
+      captures: document.querySelector('[data-captures]'),
+      sources: document.querySelector('[data-sources]'),
+      growth: document.querySelector('[data-growth]'),
+      insideList: document.querySelector('[data-inside-list]'),
+      similarity: document.querySelector('[data-similarity]'),
+      recency: document.querySelector('[data-recency]'),
+      inspection: document.querySelector('[data-inspection]'),
+      captureList: document.querySelector('[data-capture-list]')
+    };
+
+    let colonies = fallbackColonies;
+    let reefModel = null;
+    let selectedId = colonies[0].id;
+    let hoveredId = '';
+    let cameraGoal = null;
+    let fishVisible = true;
+    let waterVisible = true;
+    let particleLayer;
+    let bubbleLayer;
+    let causticPlane;
+    let fishLayer;
+    let selectionDisk;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05242d);
+    scene.fog = new THREE.FogExp2(0x0a4b58, 0.062);
+
+    const camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 80);
+    camera.position.set(0.25, 2.75, 8.2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.98;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    root.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, -0.18, 0.6);
+    controls.minDistance = 3.1;
+    controls.maxDistance = 12;
+    controls.maxPolarAngle = Math.PI * 0.64;
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const pickables = [];
+    const colonyGroups = new Map();
+    const labels = new Map();
+    const animated = [];
+    const textureCache = new Map();
+    const clock = new THREE.Clock();
+
+    window.__reefRealisticDataState = { stage: 'boot', ready: false };
+
+    try {
+      window.__reefRealisticDataState.stage = 'data';
+      reefModel = await loadReefModel();
+      if (reefModel?.colonies?.length) colonies = reefModel.colonies.slice(0, 12).map((colony, index) => normalizeLoadedColony(colony, index));
+      selectedId = colonies[0]?.id || selectedId;
+      window.__reefRealisticDataState.stage = 'ui';
+      buildUi();
+      window.__reefRealisticDataState.stage = 'scene';
+      buildScene();
+      window.__reefRealisticDataState.stage = 'select';
+      selectColony(selectedId, { silent: true });
+      window.__reefRealisticDataState.stage = 'animate';
+      animate();
+      updateSourceStatus();
+      window.__reefRealisticDataState.ready = true;
+    } catch (error) {
+      window.__reefRealisticDataState.error = error.stack || String(error);
+      console.error(error);
+      showToast('Reef render failed: ' + error.message);
+    }
+
+    function buildUi() {
+      dnaList.textContent = '';
+      labelLayer.textContent = '';
+      for (const colony of colonies) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'dna-card';
+        button.dataset.focus = colony.id;
+        button.style.setProperty('--swatch', colony.swatch);
+        button.innerHTML = '<span class="swatch"></span><span><strong>' + escapeHtml(colony.content) + '</strong><span>' + escapeHtml(colony.dna) + '</span><em>' + colony.captures + ' captures across ' + colony.sources + ' sources</em></span>';
+        button.addEventListener('click', () => selectColony(colony.id, { focus: true }));
+        dnaList.appendChild(button);
+
+        const label = document.createElement('div');
+        label.className = 'reef-label';
+        label.innerHTML = '<div><strong>' + escapeHtml(colony.content) + '</strong><span>' + escapeHtml(colony.dna) + '</span></div><i class="label-dot"></i>';
+        labelLayer.appendChild(label);
+        labels.set(colony.id, label);
+      }
+
+      document.querySelector('[data-search]').addEventListener('click', runSearch);
+      queryInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') runSearch();
+      });
+      document.querySelector('[data-fit]').addEventListener('click', fitReef);
+      document.querySelector('[data-lens]').addEventListener('click', toggleLens);
+      document.querySelector('[data-water]').addEventListener('click', toggleWater);
+      document.querySelector('[data-fish]').addEventListener('click', toggleFish);
+      renderer.domElement.addEventListener('pointerdown', () => document.body.classList.add('is-dragging'));
+      window.addEventListener('pointerup', () => document.body.classList.remove('is-dragging'));
+      renderer.domElement.addEventListener('pointermove', handlePointerMove);
+      renderer.domElement.addEventListener('click', handleClick);
+      window.addEventListener('resize', handleResize);
+    }
+
+    function buildScene() {
+      addLights();
+      addSubstrate();
+      addProjectedCaustics();
+      addMarineSnow();
+      addBubbleEmitters();
+      addFishSchool();
+      addSelectionDisk();
+
+      for (const colony of colonies) {
+        const group = new THREE.Group();
+        group.position.set(...colony.position);
+        group.userData.colonyId = colony.id;
+        colonyGroups.set(colony.id, group);
+        scene.add(group);
+
+        const morphology = colony.morphology || morphologyForId(colony.id);
+        if (morphology === 'branching') buildBranchingColony(group, colony);
+        else if (morphology === 'fan') buildFanColony(group, colony);
+        else if (morphology === 'brain') buildBrainColony(group, colony);
+        else if (morphology === 'anemone') buildAnemoneColony(group, colony);
+        else buildPlateColony(group, colony);
+
+        addSourcePatches(group, colony);
+        addCaptureGlyphs(group, colony, morphology);
+        group.scale.setScalar(0.84 + Math.min(0.48, Math.sqrt(Math.max(1, colony.captures)) / 24));
+      }
+    }
+
+    function addLights() {
+      scene.add(new THREE.HemisphereLight(0x9bd3d4, 0x0a1515, 1.15));
+
+      const sun = new THREE.DirectionalLight(0xf2fff1, 1.85);
+      sun.position.set(-4.8, 7.8, 4.2);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.camera.near = 1;
+      sun.shadow.camera.far = 16;
+      sun.shadow.camera.left = -6;
+      sun.shadow.camera.right = 6;
+      sun.shadow.camera.top = 5;
+      sun.shadow.camera.bottom = -5;
+      scene.add(sun);
+
+      const lowFill = new THREE.PointLight(0x2f948a, 2.2, 7, 2.2);
+      lowFill.position.set(1.8, 0.3, 2.7);
+      scene.add(lowFill);
+    }
+
+    function addSubstrate() {
+      const floorGeometry = new THREE.PlaneGeometry(22, 18, 90, 74);
+      floorGeometry.rotateX(-Math.PI / 2);
+      const positions = floorGeometry.attributes.position;
+      for (let i = 0; i < positions.count; i += 1) {
+        const x = positions.getX(i);
+        const z = positions.getZ(i);
+        const shelf = Math.sin(x * 0.7) * 0.035 + Math.cos(z * 0.88) * 0.04;
+        const falloff = Math.max(0, Math.min(1, (z + 4.8) / 9.6));
+        positions.setY(i, -1.22 + shelf + falloff * 0.18 + fbm2(x * 0.32, z * 0.32) * 0.18);
+      }
+      floorGeometry.computeVertexNormals();
+      const floor = new THREE.Mesh(floorGeometry, new THREE.MeshStandardMaterial({
+        color: 0x305247,
+        roughness: 0.96,
+        metalness: 0,
+        bumpMap: textureFor('sand-grain'),
+        bumpScale: 0.055
+      }));
+      floor.position.z = 0.72;
+      floor.receiveShadow = true;
+      scene.add(floor);
+
+      const rng = randomFor('substrate-rocks');
+      const rockColors = [0x4c5c58, 0x605b57, 0x686151, 0x4c625c, 0x555463, 0x74634f];
+      for (let i = 0; i < 34; i += 1) {
+        const geometry = roughRockGeometry(0.26 + rng() * 0.56, 'rock:' + i);
+        const material = new THREE.MeshStandardMaterial({ color: rockColors[i % rockColors.length], roughness: 0.98, metalness: 0, bumpMap: textureFor('rock-pitting'), bumpScale: 0.04 });
+        const rock = new THREE.Mesh(geometry, material);
+        rock.position.set(-4.7 + rng() * 9.4, -1.08 + rng() * 0.42, -0.44 + rng() * 3.08);
+        rock.scale.set(0.95 + rng() * 1.12, 0.34 + rng() * 0.52, 0.74 + rng() * 0.86);
+        rock.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI);
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+        scene.add(rock);
+      }
+
+      const ledgeMaterial = new THREE.MeshStandardMaterial({ color: 0x343a38, roughness: 0.98, metalness: 0 });
+      for (let i = 0; i < 8; i += 1) {
+        const ledge = new THREE.Mesh(new THREE.BoxGeometry(1.65 + i * 0.08, 0.16, 0.78), ledgeMaterial);
+        ledge.position.set(-3.65 + i * 1.02, -0.92 + Math.sin(i * 0.84) * 0.1, 1.88 + Math.cos(i * 0.72) * 0.2);
+        ledge.rotation.set(0.09 * Math.sin(i), -0.34 + i * 0.08, 0.035 * Math.cos(i));
+        ledge.castShadow = true;
+        ledge.receiveShadow = true;
+        scene.add(ledge);
+      }
+    }
+
+    function addProjectedCaustics() {
+      const texture = causticTexture();
+      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending });
+      causticPlane = new THREE.Mesh(new THREE.PlaneGeometry(18, 12), material);
+      causticPlane.rotation.x = -Math.PI / 2;
+      causticPlane.position.set(0, -1.015, 1.08);
+      scene.add(causticPlane);
+      animated.push({ type: 'caustics', texture, mesh: causticPlane });
+    }
+
+    function addMarineSnow() {
+      const rng = randomFor('marine-snow');
+      const count = 900;
+      const positions = new Float32Array(count * 3);
+      const seeds = new Float32Array(count);
+      const speeds = new Float32Array(count);
+      for (let i = 0; i < count; i += 1) {
+        positions[i * 3] = -7.5 + rng() * 15;
+        positions[i * 3 + 1] = -0.9 + rng() * 5.1;
+        positions[i * 3 + 2] = -4.1 + rng() * 8.1;
+        seeds[i] = rng() * Math.PI * 2;
+        speeds[i] = 0.018 + rng() * 0.036;
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      particleLayer = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xd7efe8, size: 0.011, transparent: true, opacity: 0.42, depthWrite: false }));
+      particleLayer.userData = { seeds, speeds };
+      scene.add(particleLayer);
+      animated.push({ type: 'snow', points: particleLayer });
+    }
+
+    function addBubbleEmitters() {
+      bubbleLayer = new THREE.Group();
+      scene.add(bubbleLayer);
+      const texture = bubbleTexture();
+      const rng = randomFor('bubbles');
+      const emitters = [new THREE.Vector3(-3.1, -0.72, 0.24), new THREE.Vector3(-0.45, -0.78, 1.22), new THREE.Vector3(1.65, -0.86, 1.75), new THREE.Vector3(2.7, -0.72, 0.35)];
+      for (let i = 0; i < 96; i += 1) {
+        const emitter = emitters[i % emitters.length];
+        const material = new THREE.SpriteMaterial({ map: texture, color: 0xdff8f0, transparent: true, opacity: 0.18 + rng() * 0.28, depthWrite: false });
+        const sprite = new THREE.Sprite(material);
+        const scale = 0.018 + rng() * 0.068;
+        sprite.scale.set(scale, scale, 1);
+        sprite.position.copy(emitter);
+        sprite.userData = { emitter, age: rng() * 9, life: 5.2 + rng() * 8.5, lift: 0.12 + rng() * 0.28, drift: 0.055 + rng() * 0.11, phase: rng() * Math.PI * 2, scale, alpha: material.opacity, spread: 0.1 + rng() * 0.34 };
+        resetBubble(sprite, rng, true);
+        bubbleLayer.add(sprite);
+      }
+      animated.push({ type: 'bubbles', group: bubbleLayer });
+    }
+
+    function addFishSchool() {
+      fishLayer = new THREE.Group();
+      scene.add(fishLayer);
+      const rng = randomFor('realistic-fish');
+      const palette = [0x6c796f, 0x8a8b70, 0x596c75, 0x9d8863, 0x4c635e];
+      for (let i = 0; i < 17; i += 1) {
+        const fish = createFish(palette[i % palette.length], rng);
+        fish.position.set(-4.6 + rng() * 9.2, 0.35 + rng() * 2.6, -2.2 + rng() * 3.0);
+        fish.userData.base = fish.position.clone();
+        fish.userData.phase = rng() * Math.PI * 2;
+        fish.userData.speed = 0.08 + rng() * 0.17;
+        fish.userData.radius = 0.45 + rng() * 1.1;
+        fish.userData.depth = 0.12 + rng() * 0.45;
+        fish.userData.heading = rng() * Math.PI * 2;
+        fishLayer.add(fish);
+        animated.push({ type: 'fish', group: fish });
+      }
+    }
+
+    function createFish(color, rng) {
+      const group = new THREE.Group();
+      const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.78, metalness: 0, transparent: true, opacity: 0.72 });
+      const finMat = new THREE.MeshStandardMaterial({ color: offsetColor(color, -0.07), roughness: 0.88, metalness: 0, transparent: true, opacity: 0.46, side: THREE.DoubleSide });
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.052, 18, 10), bodyMat);
+      body.scale.set(2.05 + rng() * 0.32, 0.58 + rng() * 0.16, 0.46 + rng() * 0.12);
+      body.castShadow = true;
+      group.add(body);
+
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.048, 0.095, 3), finMat.clone());
+      tail.position.x = -0.112;
+      tail.rotation.z = Math.PI / 2;
+      group.add(tail);
+      group.userData.tail = tail;
+
+      const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.065, 3), finMat.clone());
+      dorsal.position.set(0.012, 0.046, 0);
+      dorsal.rotation.x = Math.PI;
+      dorsal.rotation.z = -Math.PI / 2;
+      group.add(dorsal);
+
+      const pectoral = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.048, 3), finMat.clone());
+      pectoral.position.set(0.02, -0.018, 0.038);
+      pectoral.rotation.set(0.9, 0.2, -0.6);
+      group.add(pectoral);
+      group.scale.setScalar(0.78 + rng() * 0.5);
+      return group;
+    }
+
+    function addSelectionDisk() {
+      const material = new THREE.MeshBasicMaterial({ color: 0xd9bc86, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+      selectionDisk = new THREE.Mesh(new THREE.CircleGeometry(1, 72), material);
+      selectionDisk.rotation.x = -Math.PI / 2;
+      selectionDisk.visible = false;
+      scene.add(selectionDisk);
+      animated.push({ type: 'selection', mesh: selectionDisk });
+    }
+
+    function buildBranchingColony(group, colony) {
+      const rng = randomFor(colony.id);
+      const baseMat = reefMaterial(tint(colony.color, -0.22), 0.02);
+      const branchMat = reefMaterial(tint(colony.color, -0.04), 0.018);
+      const liveMat = reefMaterial(tint(colony.color, 0.12), 0.02);
+      addLumpyBase(group, colony, 0.62, baseMat, 'branch-base');
+
+      const branches = clamp(16 + Math.round(Math.sqrt(colony.captures) * 2.3) + Math.round(colony.sources * 0.5), 22, 46);
+      for (let i = 0; i < branches; i += 1) {
+        const angle = -Math.PI * 0.92 + (i / branches) * Math.PI * 1.78 + (rng() - 0.5) * 0.32;
+        const start = new THREE.Vector3((rng() - 0.5) * 0.48, -0.02 + rng() * 0.16, (rng() - 0.5) * 0.32);
+        const end = new THREE.Vector3(Math.cos(angle) * (0.48 + rng() * 0.68), 0.52 + rng() * (0.62 + Math.min(0.6, colony.captures / 140)), Math.sin(angle) * (0.28 + rng() * 0.48));
+        const mid = start.clone().lerp(end, 0.48).add(new THREE.Vector3((rng() - 0.5) * 0.22, 0.1 + rng() * 0.18, (rng() - 0.5) * 0.18));
+        createTube(group, [start, mid, end], 0.025 + rng() * 0.03, i % 4 === 0 ? liveMat : branchMat, colony, 12, 8);
+        addEmbeddedTips(group, end, colony, liveMat, rng, 2 + Math.floor(rng() * 3));
+
+        if (i % 3 === 0) {
+          const forkStart = start.clone().lerp(end, 0.58 + rng() * 0.2);
+          const forkAngle = angle + (rng() - 0.5) * 1.3;
+          const forkEnd = forkStart.clone().add(new THREE.Vector3(Math.cos(forkAngle) * (0.18 + rng() * 0.24), 0.2 + rng() * 0.32, Math.sin(forkAngle) * (0.12 + rng() * 0.22)));
+          createTube(group, [forkStart, forkStart.clone().lerp(forkEnd, 0.5).add(new THREE.Vector3(0, 0.06, 0)), forkEnd], 0.014 + rng() * 0.012, liveMat, colony, 10, 7);
+          addEmbeddedTips(group, forkEnd, colony, liveMat, rng, 2);
+        }
+      }
+    }
+
+    function buildFanColony(group, colony) {
+      const rng = randomFor(colony.id);
+      const stemMat = reefMaterial(tint(colony.color, -0.2), 0.025);
+      const ribMat = reefMaterial(tint(colony.color, 0.02), 0.018);
+      addLumpyBase(group, colony, 0.46, reefMaterial(tint(colony.color, -0.32), 0.02), 'fan-base');
+      createTube(group, [new THREE.Vector3(0, -0.02, 0), new THREE.Vector3(-0.02, 0.58, 0.01), new THREE.Vector3(0, 1.05, -0.02)], 0.038, stemMat, colony, 16, 9);
+
+      const ribEnds = [];
+      const ribCount = clamp(12 + Math.round(Math.sqrt(colony.captures) * 1.6) + Math.round(colony.sources * 0.25), 18, 34);
+      for (let i = 0; i < ribCount; i += 1) {
+        const t = i / (ribCount - 1);
+        const angle = -0.12 + t * Math.PI * 1.12;
+        const radius = 0.72 + Math.sin(t * Math.PI) * 0.52 + rng() * 0.12;
+        const end = new THREE.Vector3(Math.cos(angle) * radius, 0.4 + Math.sin(angle) * radius * 0.78 + rng() * 0.07, -0.08 + (rng() - 0.5) * 0.15);
+        ribEnds.push(end);
+        const base = new THREE.Vector3(0, 0.42, 0);
+        const mid = base.clone().lerp(end, 0.48).add(new THREE.Vector3((rng() - 0.5) * 0.08, 0.08 + rng() * 0.12, (rng() - 0.5) * 0.08));
+        createTube(group, [base, mid, end], 0.009 + rng() * 0.012, ribMat, colony, 20, 6);
+      }
+
+      const bands = clamp(5 + Math.round(colony.sources / 2), 6, 11);
+      for (let band = 0; band < bands; band += 1) {
+        const amount = 0.18 + band * (0.66 / bands);
+        const material = reefMaterial(tint(colony.color, band % 2 ? -0.04 : 0.08), 0.015);
+        for (let i = 0; i < ribEnds.length - 1; i += 1) {
+          if ((i + band) % 5 === 0) continue;
+          const left = ribEnds[i].clone().multiplyScalar(amount).add(new THREE.Vector3(0, 0.42 * (1 - amount), 0));
+          const right = ribEnds[i + 1].clone().multiplyScalar(amount).add(new THREE.Vector3(0, 0.42 * (1 - amount), 0));
+          const jitter = new THREE.Vector3((rng() - 0.5) * 0.03, (rng() - 0.5) * 0.03, (rng() - 0.5) * 0.02);
+          createTube(group, [left, left.clone().lerp(right, 0.5).add(jitter), right], 0.0045, material, colony, 8, 5);
+        }
+      }
+      animated.push({ type: 'sway', group, amplitude: 0.018, speed: 0.58, phase: 1.2 });
+    }
+
+    function buildPlateColony(group, colony) {
+      const rng = randomFor(colony.id);
+      const baseMat = reefMaterial(tint(colony.color, -0.28), 0.02);
+      const plateMats = [reefMaterial(tint(colony.color, 0.02), 0.018), reefMaterial(tint(colony.color, -0.06), 0.015), reefMaterial(tint(colony.color, 0.1), 0.018)];
+      addLumpyBase(group, colony, 0.56, baseMat, 'plate-base');
+
+      const plates = clamp(5 + Math.round(Math.sqrt(colony.captures) * 0.9), 7, 15);
+      for (let i = 0; i < plates; i += 1) {
+        const radius = 0.31 + i * 0.055 + rng() * 0.045;
+        const geometry = irregularPlateGeometry(radius, 0.043 + rng() * 0.02, 72, 'plate:' + colony.id + ':' + i);
+        const plate = new THREE.Mesh(geometry, plateMats[i % plateMats.length].clone());
+        plate.position.set((rng() - 0.5) * 0.52, 0.05 + i * 0.088, (rng() - 0.5) * 0.32);
+        plate.scale.set(1.06 + rng() * 0.42, 1, 0.46 + rng() * 0.26);
+        plate.rotation.set((rng() - 0.5) * 0.18, rng() * Math.PI, (rng() - 0.5) * 0.12);
+        plate.castShadow = true;
+        plate.receiveShadow = true;
+        mark(plate, colony);
+        group.add(plate);
+
+        if (i > 2) {
+          const rimPoints = [];
+          for (let r = 0; r <= 44; r += 1) {
+            const a = (r / 44) * Math.PI * 2;
+            const wobble = 1 + Math.sin(a * 3.1 + i) * 0.045 + Math.sin(a * 7.3) * 0.025;
+            rimPoints.push(new THREE.Vector3(Math.cos(a) * radius * plate.scale.x * wobble + plate.position.x, plate.position.y + 0.046, Math.sin(a) * radius * plate.scale.z * wobble + plate.position.z));
+          }
+          createTube(group, rimPoints, 0.0085, reefMaterial(tint(colony.color, 0.16), 0.025), colony, 44, 5, true);
+        }
+      }
+    }
+
+    function buildBrainColony(group, colony) {
+      const rng = randomFor(colony.id);
+      const bodyMat = reefMaterial(tint(colony.color, -0.08), 0.02);
+      const ridgeMat = reefMaterial(tint(colony.color, 0.17), 0.025);
+      const body = new THREE.Mesh(displacedSphere(0.82, 44, 24, 'brain-body:' + colony.id), bodyMat);
+      body.scale.set(1.24, 0.62, 0.88);
+      body.position.y = 0.12;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      mark(body, colony);
+      group.add(body);
+
+      const ridges = clamp(8 + Math.round(Math.sqrt(colony.captures) * 1.5), 12, 24);
+      for (let r = 0; r < ridges; r += 1) {
+        const points = [];
+        const y = 0.18 + rng() * 0.48;
+        const baseRadius = 0.2 + rng() * 0.64;
+        const phase = rng() * Math.PI * 2;
+        for (let i = 0; i <= 36; i += 1) {
+          const a = (i / 36) * Math.PI * 2;
+          const wobble = 1 + Math.sin(a * 3 + phase) * 0.11 + Math.sin(a * 6.7 + r) * 0.045;
+          points.push(new THREE.Vector3(Math.cos(a) * baseRadius * 1.15 * wobble + (rng() - 0.5) * 0.008, y + Math.sin(a * 2.4 + phase) * 0.055, Math.sin(a) * baseRadius * 0.72 * wobble));
+        }
+        const tube = createTube(group, points, 0.01 + rng() * 0.007, ridgeMat, colony, 36, 5, true);
+        tube.rotation.set((rng() - 0.5) * 0.16, (rng() - 0.5) * 0.6, (rng() - 0.5) * 0.12);
+      }
+    }
+
+    function buildAnemoneColony(group, colony) {
+      const rng = randomFor(colony.id);
+      addLumpyBase(group, colony, 0.62, reefMaterial(tint(colony.color, -0.28), 0.02), 'anemone-base');
+      const mats = [reefMaterial(tint(colony.color, 0.03), 0.018), reefMaterial(tint(colony.color, 0.12), 0.017), reefMaterial(tint(colony.color, -0.04), 0.018)];
+      const count = clamp(36 + Math.round(colony.captures * 0.62) + Math.round(colony.sources * 1.4), 56, 134);
+
+      for (let i = 0; i < count; i += 1) {
+        const a = rng() * Math.PI * 2;
+        const r = Math.sqrt(rng()) * 0.9;
+        const start = new THREE.Vector3(Math.cos(a) * r, 0.0, Math.sin(a) * r * 0.66);
+        const end = start.clone().add(new THREE.Vector3((rng() - 0.5) * 0.18, 0.22 + rng() * 0.38, (rng() - 0.5) * 0.16));
+        const mid = start.clone().lerp(end, 0.58).add(new THREE.Vector3((rng() - 0.5) * 0.14, 0.08 + rng() * 0.08, (rng() - 0.5) * 0.12));
+        const tube = createTube(group, [start, mid, end], 0.007 + rng() * 0.008, mats[i % mats.length], colony, 12, 5);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.014 + rng() * 0.011, 8, 5), mats[(i + 1) % mats.length].clone());
+        tip.position.copy(end);
+        tip.castShadow = true;
+        mark(tip, colony, { tip: i % 7 === 0 });
+        group.add(tip);
+        animated.push({ type: 'tentacle', mesh: tube, phase: rng() * Math.PI * 2, amplitude: 0.018 + rng() * 0.02, speed: 0.7 + rng() * 0.7 });
+      }
+      animated.push({ type: 'pulseGroup', group, amplitude: 0.008, speed: 0.8, phase: 2.2 });
+    }
+
+    function addSourcePatches(group, colony) {
+      const sources = (colony.source_bands || colony.top_domains || []).slice(0, 7);
+      for (let i = 0; i < sources.length; i += 1) {
+        const source = sources[i];
+        const seed = source.seed || hashText((source.domain || source.tool || 'source') + ':' + i);
+        const rng = randomFor('source-patch:' + colony.id + ':' + seed);
+        const material = reefMaterial(mutedSeedColor(seed), 0.026);
+        const clumps = 2 + Math.min(3, Math.floor(source.count || 1));
+        const anchor = new THREE.Vector3((rng() - 0.5) * 1.25, -0.04 + rng() * 0.1, (rng() - 0.5) * 0.82);
+        for (let j = 0; j < clumps; j += 1) {
+          const patch = new THREE.Mesh(new THREE.DodecahedronGeometry(0.045 + Math.min(0.13, Math.sqrt(source.count || 1) * 0.024) * (0.72 + rng() * 0.5), 1), material.clone());
+          patch.position.set(anchor.x + (rng() - 0.5) * 0.34, anchor.y + j * 0.015, anchor.z + (rng() - 0.5) * 0.26);
+          patch.scale.set(1.2 + rng() * 1.1, 0.34 + rng() * 0.22, 0.9 + rng() * 0.7);
+          patch.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI);
+          patch.castShadow = true;
+          mark(patch, colony);
+          group.add(patch);
+        }
+      }
+    }
+
+    function addCaptureGlyphs(group, colony, morphology) {
+      const glyphs = (colony.capture_glyphs?.length ? colony.capture_glyphs : syntheticGlyphs(colony)).slice(0, 56);
+      for (let i = 0; i < glyphs.length; i += 1) {
+        const glyph = glyphs[i];
+        const recency = glyph.recency_score ?? (i < 8 ? 0.86 : 0.25);
+        const position = glyphPosition(glyph, morphology, i);
+        const color = recency > 0.72 ? 0xdcc4a2 : mutedSeedColor(glyph.seed || hashText(glyph.id || String(i)));
+        const material = reefMaterial(color, 0.018, recency > 0.72 ? 0.055 : 0.018);
+        const geometry = recency > 0.72 ? new THREE.SphereGeometry(glyph.size || 0.029, 8, 5) : new THREE.DodecahedronGeometry(glyph.size || 0.032, 0);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.copy(position);
+        mesh.scale.set(1.05, 0.82 + recency * 0.28, 0.92);
+        mesh.userData.captureGlyph = glyph;
+        mesh.castShadow = true;
+        mark(mesh, colony, { tip: recency > 0.65 });
+        group.add(mesh);
+        if (recency > 0.78) animated.push({ type: 'glyphPulse', mesh, baseScale: mesh.scale.clone(), phase: i * 0.43, speed: 1.2 + recency });
+      }
+    }
+
+    function syntheticGlyphs(colony) {
+      const count = clamp(Math.round(Math.sqrt(colony.captures || 1) * 3.2), 10, 42);
+      return Array.from({ length: count }, (_, index) => ({
+        id: colony.id + ':sample:' + index,
+        seed: hashText(colony.id + ':' + index),
+        size: 0.022 + (index % 5) * 0.004,
+        recency_score: index < Math.max(2, count * 0.22) ? 0.84 : 0.18 + (index % 6) * 0.08
+      }));
+    }
+
+    function glyphPosition(glyph, morphology, index) {
+      const seed = glyph.seed || hashText(glyph.id || String(index));
+      const local = Array.isArray(glyph.position) ? new THREE.Vector3(glyph.position[0], glyph.position[1], glyph.position[2]) : new THREE.Vector3();
+      const t = ((seed % 1000) / 1000) * Math.PI * 2;
+      if (morphology === 'fan') return new THREE.Vector3(Math.cos(t) * (0.35 + Math.abs(local.x) * 0.7), 0.52 + Math.abs(local.y) * 0.92, -0.04 + Math.sin(t) * 0.08);
+      if (morphology === 'plate') return new THREE.Vector3(Math.cos(t) * (0.48 + Math.abs(local.x) * 0.72), 0.22 + (index % 7) * 0.07, Math.sin(t) * (0.26 + Math.abs(local.z) * 0.48));
+      if (morphology === 'brain') return new THREE.Vector3(Math.cos(t) * (0.28 + Math.abs(local.x) * 0.58), 0.35 + Math.abs(local.y) * 0.42, Math.sin(t) * (0.18 + Math.abs(local.z) * 0.46));
+      if (morphology === 'anemone') return new THREE.Vector3(Math.cos(t) * (0.24 + Math.abs(local.x) * 0.72), 0.22 + Math.abs(local.y) * 0.55, Math.sin(t) * (0.18 + Math.abs(local.z) * 0.5));
+      return new THREE.Vector3(local.x, 0.32 + Math.abs(local.y) * 1.05, local.z);
+    }
+
+    function addLumpyBase(group, colony, radius, material, seed) {
+      const mesh = new THREE.Mesh(roughDodecahedron(radius, 2, seed + ':' + colony.id), material.clone ? material.clone() : material);
+      mesh.scale.set(1.28, 0.38, 0.84);
+      mesh.position.y = -0.06;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mark(mesh, colony);
+      group.add(mesh);
+      return mesh;
+    }
+
+    function addEmbeddedTips(group, position, colony, material, rng, count) {
+      for (let i = 0; i < count; i += 1) {
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.012 + rng() * 0.014, 8, 5), material.clone());
+        tip.position.copy(position).add(new THREE.Vector3((rng() - 0.5) * 0.075, (rng() - 0.5) * 0.055, (rng() - 0.5) * 0.075));
+        tip.material.color.offsetHSL(0, -0.08, 0.12);
+        tip.castShadow = true;
+        mark(tip, colony, { tip: true });
+        group.add(tip);
+      }
+    }
+
+    function reefMaterial(color, bumpScale, emissiveIntensity = 0.02) {
+      const base = new THREE.Color(color);
+      return new THREE.MeshStandardMaterial({
+        color: base,
+        roughness: 0.88,
+        metalness: 0,
+        emissive: base.clone().multiplyScalar(0.05),
+        emissiveIntensity,
+        bumpMap: textureFor('reef-micro'),
+        bumpScale
+      });
+    }
+
+    function createTube(group, points, radius, material, colony, segments = 18, radialSegments = 6, closed = false) {
+      const curve = new THREE.CatmullRomCurve3(points, closed, 'catmullrom', 0.42);
+      const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, segments, radius, radialSegments, closed), material.clone ? material.clone() : material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mark(mesh, colony);
+      group.add(mesh);
+      return mesh;
+    }
+
+    function mark(mesh, colony, meta = {}) {
+      mesh.userData.colonyId = colony.id;
+      mesh.userData.tip = Boolean(meta.tip);
+      pickables.push(mesh);
+      return mesh;
+    }
+
+    function handlePointerMove(event) {
+      hoveredId = pick(event);
+      document.body.classList.toggle('is-picking', Boolean(hoveredId));
+      updateCards();
+    }
+
+    function handleClick(event) {
+      const id = pick(event);
+      if (id) selectColony(id, { focus: true });
+    }
+
+    function pick(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(pickables, false);
+      return hits.find((hit) => hit.object.userData.colonyId)?.object.userData.colonyId || '';
+    }
+
+    function selectColony(id, options = {}) {
+      const colony = colonies.find((item) => item.id === id);
+      if (!colony) return;
+      selectedId = id;
+      ui.title.textContent = colony.label;
+      ui.dna.textContent = colony.dna;
+      ui.copy.textContent = colony.copy;
+      ui.captures.textContent = String(colony.captures);
+      ui.sources.textContent = String(colony.sources);
+      ui.growth.textContent = colony.growth;
+      renderInsideList(colony);
+      ui.similarity.textContent = colony.similarity;
+      ui.recency.textContent = colony.recency;
+      ui.inspection.textContent = colony.inspection;
+      renderCaptureList(colony);
+      updateCards();
+      moveSelectionDisk(colony);
+      if (options.focus) focusColony(id);
+      if (!options.silent) showToast(colony.content + ' selected. The inspector shows the evidence inside this growth.');
+    }
+
+    function renderInsideList(colony) {
+      const domains = summarizeEntries(colony.top_domains, 'domain') || (colony.sources + ' source sites');
+      const topics = summarizeEntries(colony.topic_samples, 'topic') || summarizeEntries(colony.top_terms, 'term') || 'captured query/title terms';
+      const tools = summarizeEntries(colony.tool_counts, 'tool') || 'capture tools';
+      ui.insideList.innerHTML = [
+        ['sources', domains],
+        ['signals', topics],
+        ['tools', tools]
+      ].map(([label, value]) => '<div class="inside-row"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(value) + '</span></div>').join('');
+    }
+
+    function renderCaptureList(colony) {
+      const captures = (colony.recent_captures || []).slice(0, 5);
+      if (!captures.length) {
+        const domains = (colony.top_domains || []).slice(0, 4).map((entry) => entry.domain + ' x' + entry.count).join(' · ');
+        ui.captureList.innerHTML = '<div><strong>Source texture</strong><span>' + escapeHtml(domains || 'Static visual sample; connect ?api=/api/coral/reef for live captures.') + '</span></div>';
+        return;
+      }
+      ui.captureList.innerHTML = captures.map((capture) => {
+        const href = escapeHtml(capture.url || '#');
+        const title = escapeHtml(capture.title || capture.domain || capture.url || 'Untitled capture');
+        const meta = escapeHtml([capture.domain, capture.tool, capture.captured_at?.slice(0, 10)].filter(Boolean).join(' · '));
+        return '<a href="' + href + '" target="_blank" rel="noreferrer"><strong>' + title + '</strong><span>' + meta + '</span></a>';
+      }).join('');
+    }
+
+    function summarizeEntries(entries = [], key) {
+      return entries.slice(0, 4).map((entry) => String(entry[key] || '').trim() + (entry.count ? ' x' + entry.count : '')).filter(Boolean).join(' · ');
+    }
+
+    function updateCards() {
+      document.querySelectorAll('.dna-card').forEach((button) => {
+        const id = button.dataset.focus;
+        button.classList.toggle('is-active', id === selectedId || id === hoveredId);
+      });
+      labels.forEach((label, id) => label.classList.toggle('is-active', id === selectedId || id === hoveredId));
+    }
+
+    function moveSelectionDisk(colony) {
+      const group = colonyGroups.get(colony.id);
+      if (!group || !selectionDisk) return;
+      selectionDisk.visible = true;
+      selectionDisk.position.set(group.position.x, -0.97, group.position.z);
+      const scale = 0.78 + Math.min(0.8, Math.sqrt(Math.max(1, colony.captures)) / 18);
+      selectionDisk.scale.set(scale * 1.25, scale * 0.86, 1);
+    }
+
+    function focusColony(id) {
+      const group = colonyGroups.get(id);
+      if (!group) return;
+      const target = group.position.clone().add(new THREE.Vector3(0, 0.48, 0));
+      const offset = new THREE.Vector3(0.18, 1.0, 2.7);
+      if (id.includes('docs')) offset.set(0.32, 0.95, 2.85);
+      if (id.includes('filings')) offset.set(-0.15, 0.78, 2.45);
+      if (id.includes('social') || id.includes('childcare')) offset.set(0.12, 0.88, 2.55);
+      cameraGoal = { target, position: target.clone().add(offset) };
+    }
+
+    function fitReef() {
+      cameraGoal = { target: new THREE.Vector3(0, -0.18, 0.6), position: new THREE.Vector3(0.25, 2.75, 8.2) };
+      showToast('Showing the whole reef wall. Use DNA lens to reveal colony labels.');
+    }
+
+    function toggleLens(event) {
+      const pressed = event.currentTarget.getAttribute('aria-pressed') === 'true';
+      event.currentTarget.setAttribute('aria-pressed', String(!pressed));
+      document.body.classList.toggle('dna-lens', !pressed);
+    }
+
+    function toggleWater(event) {
+      waterVisible = !waterVisible;
+      event.currentTarget.setAttribute('aria-pressed', String(waterVisible));
+      particleLayer.visible = waterVisible;
+      bubbleLayer.visible = waterVisible;
+      causticPlane.visible = waterVisible;
+      document.querySelectorAll('[data-water-layer]').forEach((node) => { node.style.display = waterVisible ? '' : 'none'; });
+      showToast(waterVisible ? 'Water layers restored.' : 'Water layers hidden for geometry inspection.');
+    }
+
+    function toggleFish(event) {
+      fishVisible = !fishVisible;
+      event.currentTarget.setAttribute('aria-pressed', String(fishVisible));
+      fishLayer.visible = fishVisible;
+      showToast(fishVisible ? 'Fish restored.' : 'Fish hidden.');
+    }
+
+    function runSearch() {
+      const q = queryInput.value.trim().toLowerCase();
+      if (!q) {
+        showToast('Type a content family such as housing, childcare, stocks, docs, filings, or social.');
+        return;
+      }
+      const match = colonies.find((colony) => {
+        const captureText = (colony.recent_captures || []).map((capture) => [capture.title, capture.domain, capture.url, capture.query, capture.topic, capture.text_preview].join(' ')).join(' ');
+        const dataTerms = [
+          ...(colony.top_domains || []).map((entry) => entry.domain),
+          ...(colony.top_terms || []).map((entry) => entry.term),
+          ...(colony.topic_samples || []).map((entry) => entry.topic)
+        ];
+        const haystack = [colony.id, colony.label, colony.content, colony.dna, colony.copy, ...(colony.tags || []), ...dataTerms, captureText].join(' ').toLowerCase();
+        return haystack.includes(q);
+      });
+      if (!match) {
+        showToast('No colony DNA matched "' + q + '". This is where read-time grouping would add new growth.');
+        return;
+      }
+      selectColony(match.id, { focus: true });
+      flashColony(match.id);
+    }
+
+    async function loadReefModel() {
+      const embedded = document.querySelector('#coral-reef-data')?.textContent?.trim();
+      if (embedded) {
+        try {
+          return { ...JSON.parse(embedded), source: 'embedded reef data' };
+        } catch (error) {
+          showToast('Embedded reef data was not valid JSON.');
+        }
+      }
+
+      const params = new URLSearchParams(location.search);
+      const api = params.get('api') || (location.protocol === 'file:' ? '' : '/api/coral/reef');
+      if (!api) return null;
+
+      try {
+        const response = await fetch(api, { headers: { accept: 'application/json' } });
+        if (!response.ok) throw new Error(response.status + ' ' + response.statusText);
+        return { ...(await response.json()), source: 'live reef api' };
+      } catch (error) {
+        showToast('Using static fallback reef: ' + error.message);
+        return null;
+      }
+    }
+
+    function normalizeLoadedColony(colony, index) {
+      const fallback = fallbackColonies[index % fallbackColonies.length];
+      const id = colony.id || fallback.id;
+      return {
+        ...fallback,
+        ...colony,
+        id,
+        label: colony.label || fallback.label,
+        content: colony.content || fallback.content,
+        dna: colony.dna || fallback.dna,
+        morphology: colony.morphology || fallback.morphology || morphologyForId(id),
+        color: colony.color || fallback.color,
+        swatch: colony.swatch || fallback.swatch,
+        position: Array.isArray(colony.position) ? colony.position : fallback.position,
+        captures: colony.captures ?? fallback.captures,
+        sources: colony.sources ?? fallback.sources,
+        growth: colony.growth || fallback.growth,
+        tags: colony.tags || fallback.tags || [],
+        copy: colony.copy || fallback.copy,
+        similarity: colony.similarity || fallback.similarity,
+        recency: colony.recency || fallback.recency,
+        inspection: colony.inspection || fallback.inspection
+      };
+    }
+
+    function updateSourceStatus() {
+      const node = document.querySelector('[data-source-status]');
+      if (!node) return;
+      if (!reefModel) {
+        node.textContent = 'Static fallback reef';
+        return;
+      }
+      const stats = reefModel.stats || {};
+      node.textContent = (reefModel.source || 'reef data') + ' · ' + (stats.capture_count || 0) + ' captures · ' + (stats.source_count || 0) + ' sources · ' + (stats.colony_count || colonies.length) + ' colonies';
+    }
+
+    function animate() {
+      const elapsed = clock.getElapsedTime();
+      const delta = Math.min(0.04, clock.getDelta());
+
+      for (const item of animated) {
+        if (item.type === 'caustics') {
+          item.texture.offset.x = (elapsed * 0.012) % 1;
+          item.texture.offset.y = (elapsed * -0.007) % 1;
+          item.mesh.material.opacity = 0.13 + Math.sin(elapsed * 0.58) * 0.035;
+        }
+
+        if (item.type === 'snow') {
+          const position = item.points.geometry.getAttribute('position');
+          const { seeds, speeds } = item.points.userData;
+          for (let i = 0; i < position.count; i += 1) {
+            const seed = seeds[i];
+            let x = position.getX(i) + speeds[i] * delta * 0.32 + Math.sin(elapsed * 0.22 + seed) * delta * 0.012;
+            let y = position.getY(i) + Math.sin(elapsed * 0.28 + seed) * delta * 0.015;
+            let z = position.getZ(i) + speeds[i] * delta * 0.08;
+            if (x > 7.5) x = -7.5;
+            if (z > 4.0) z = -4.1;
+            if (y > 4.3) y = -0.9;
+            position.setXYZ(i, x, y, z);
+          }
+          position.needsUpdate = true;
+        }
+
+        if (item.type === 'bubbles') {
+          for (const bubble of item.group.children) {
+            const data = bubble.userData;
+            data.age += delta;
+            const p = data.age / data.life;
+            bubble.position.y += data.lift * delta;
+            bubble.position.x += Math.sin(elapsed * 0.9 + data.phase) * data.drift * delta;
+            bubble.position.z += Math.cos(elapsed * 0.65 + data.phase) * data.drift * delta * 0.55;
+            bubble.material.opacity = data.alpha * Math.sin(Math.min(1, p) * Math.PI);
+            const scale = data.scale * (1 + p * 0.8);
+            bubble.scale.set(scale, scale, 1);
+            if (data.age >= data.life || bubble.position.y > 4.4) resetBubble(bubble, null, false);
+          }
+        }
+
+        if (item.type === 'fish') {
+          const data = item.group.userData;
+          const phase = elapsed * data.speed + data.phase;
+          const prevX = item.group.position.x;
+          item.group.position.x = data.base.x + Math.sin(phase) * data.radius;
+          item.group.position.y = data.base.y + Math.sin(phase * 1.7) * 0.055;
+          item.group.position.z = data.base.z + Math.cos(phase * 0.78) * data.depth;
+          const dx = item.group.position.x - prevX;
+          const targetHeading = dx >= 0 ? 0 : Math.PI;
+          data.heading = lerpAngle(data.heading, targetHeading, 0.035);
+          item.group.rotation.y = data.heading;
+          if (data.tail) data.tail.rotation.y = Math.sin(elapsed * 9.5 + data.phase) * 0.34;
+        }
+
+        if (item.type === 'sway') item.group.rotation.z = Math.sin(elapsed * item.speed + item.phase) * item.amplitude;
+        if (item.type === 'tentacle') {
+          item.mesh.rotation.z = Math.sin(elapsed * item.speed + item.phase) * item.amplitude;
+          item.mesh.rotation.x = Math.cos(elapsed * item.speed * 0.7 + item.phase) * item.amplitude * 0.45;
+        }
+        if (item.type === 'pulseGroup') item.group.scale.setScalar(1 + Math.sin(elapsed * item.speed + item.phase) * item.amplitude);
+        if (item.type === 'glyphPulse') {
+          const pulse = 1 + Math.sin(elapsed * item.speed + item.phase) * 0.12;
+          item.mesh.scale.set(item.baseScale.x * pulse, item.baseScale.y * pulse, item.baseScale.z * pulse);
+        }
+        if (item.type === 'selection') item.mesh.material.opacity = 0.08 + Math.sin(elapsed * 2.1) * 0.025;
+      }
+
+      for (const object of pickables) {
+        if (!object.material || !('emissiveIntensity' in object.material)) continue;
+        const selected = object.userData.colonyId === selectedId;
+        const hovered = object.userData.colonyId === hoveredId;
+        if (object.userData.tip) object.material.emissiveIntensity = (selected || hovered ? 0.09 : 0.035) + Math.sin(elapsed * 2.8) * 0.012;
+      }
+
+      if (cameraGoal) {
+        camera.position.lerp(cameraGoal.position, 0.055);
+        controls.target.lerp(cameraGoal.target, 0.055);
+        if (camera.position.distanceTo(cameraGoal.position) < 0.035 && controls.target.distanceTo(cameraGoal.target) < 0.035) cameraGoal = null;
+      }
+
+      controls.update();
+      updateLabels();
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    function updateLabels() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const world = new THREE.Vector3();
+      const projected = new THREE.Vector3();
+      for (const colony of colonies) {
+        const group = colonyGroups.get(colony.id);
+        const label = labels.get(colony.id);
+        if (!group || !label) continue;
+        group.getWorldPosition(world);
+        world.y += colony.morphology === 'fan' ? 1.8 : colony.morphology === 'plate' ? 1.1 : 1.3;
+        projected.copy(world).project(camera);
+        const x = (projected.x * 0.5 + 0.5) * width;
+        const y = (-projected.y * 0.5 + 0.5) * height;
+        const visible = projected.z > -1 && projected.z < 1;
+        label.style.transform = 'translate(' + x.toFixed(1) + 'px, ' + y.toFixed(1) + 'px) translate(-50%, -115%)';
+        label.style.display = visible ? 'block' : 'none';
+      }
+    }
+
+    function resetBubble(sprite, providedRng, initial) {
+      const rng = providedRng || randomFor('bubble-reset:' + Math.round(performance.now() * 1000) + ':' + Math.random());
+      const data = sprite.userData;
+      data.age = initial ? rng() * data.life : 0;
+      sprite.position.copy(data.emitter).add(new THREE.Vector3((rng() - 0.5) * data.spread, rng() * 0.2, (rng() - 0.5) * data.spread));
+      sprite.material.opacity = 0;
+    }
+
+    function handleResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function flashColony(id) {
+      const group = colonyGroups.get(id);
+      if (!group) return;
+      const until = clock.elapsedTime + 1.4;
+      for (const child of group.children) child.userData.flashUntil = until;
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('is-visible');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('is-visible'), 2400);
+    }
+
+    function textureFor(name) {
+      if (textureCache.has(name)) return textureCache.get(name);
+      const canvas = document.createElement('canvas');
+      canvas.width = 192;
+      canvas.height = 192;
+      const ctx = canvas.getContext('2d');
+      const rng = randomFor('texture:' + name);
+      ctx.fillStyle = 'rgb(128,128,128)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < 1400; i += 1) {
+        const shade = 92 + Math.floor(rng() * 82);
+        const alpha = 0.08 + rng() * 0.28;
+        ctx.fillStyle = 'rgba(' + shade + ',' + shade + ',' + shade + ',' + alpha.toFixed(3) + ')';
+        ctx.beginPath();
+        ctx.arc(rng() * canvas.width, rng() * canvas.height, 0.35 + rng() * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (let i = 0; i < 38; i += 1) {
+        ctx.strokeStyle = 'rgba(205,205,205,0.09)';
+        ctx.lineWidth = 0.5 + rng() * 1.1;
+        ctx.beginPath();
+        const y = rng() * canvas.height;
+        for (let x = -10; x <= canvas.width + 10; x += 10) {
+          const py = y + Math.sin(x * 0.05 + rng() * 5) * (1.5 + rng() * 3.5);
+          if (x === -10) ctx.moveTo(x, py);
+          else ctx.lineTo(x, py);
+        }
+        ctx.stroke();
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(2.6, 2.6);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      textureCache.set(name, texture);
+      return texture;
+    }
+
+    function causticTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      const rng = randomFor('projected-caustics');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.filter = 'blur(0.7px)';
+      for (let i = 0; i < 90; i += 1) {
+        const x = rng() * canvas.width;
+        const y = rng() * canvas.height;
+        const length = 36 + rng() * 96;
+        const angle = -0.7 + rng() * 1.4;
+        ctx.strokeStyle = 'rgba(222, 255, 236,' + (0.04 + rng() * 0.13).toFixed(3) + ')';
+        ctx.lineWidth = 1 + rng() * 3.4;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        for (let j = 1; j <= 6; j += 1) {
+          const t = j / 6;
+          const bend = Math.sin(t * Math.PI * 2 + rng() * 4) * (8 + rng() * 14);
+          ctx.lineTo(x + Math.cos(angle) * length * t + Math.cos(angle + Math.PI / 2) * bend, y + Math.sin(angle) * length * t + Math.sin(angle + Math.PI / 2) * bend);
+        }
+        ctx.stroke();
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(2.4, 1.7);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    }
+
+    function bubbleTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 96;
+      canvas.height = 96;
+      const ctx = canvas.getContext('2d');
+      const gradient = ctx.createRadialGradient(34, 28, 5, 48, 48, 43);
+      gradient.addColorStop(0, 'rgba(255,255,255,0.82)');
+      gradient.addColorStop(0.2, 'rgba(212,255,245,0.2)');
+      gradient.addColorStop(0.62, 'rgba(170,229,220,0.08)');
+      gradient.addColorStop(0.74, 'rgba(214,255,246,0.36)');
+      gradient.addColorStop(1, 'rgba(214,255,246,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(48, 48, 44, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(230,255,250,0.35)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(48, 48, 39, Math.PI * 1.1, Math.PI * 1.86);
+      ctx.stroke();
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    }
+
+    function roughRockGeometry(radius, seed) {
+      const geometry = new THREE.IcosahedronGeometry(radius, 3);
+      const rng = randomFor(seed);
+      const positions = geometry.attributes.position;
+      const vertex = new THREE.Vector3();
+      for (let i = 0; i < positions.count; i += 1) {
+        vertex.fromBufferAttribute(positions, i);
+        const n = 0.88 + fbm3(vertex.x * 2.2, vertex.y * 2.4, vertex.z * 2.1) * 0.18 + (rng() - 0.5) * 0.08;
+        vertex.multiplyScalar(n);
+        positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+      }
+      geometry.computeVertexNormals();
+      return geometry;
+    }
+
+    function roughDodecahedron(radius, detail, seed) {
+      const geometry = new THREE.DodecahedronGeometry(radius, detail);
+      const rng = randomFor(seed);
+      const positions = geometry.attributes.position;
+      const vertex = new THREE.Vector3();
+      for (let i = 0; i < positions.count; i += 1) {
+        vertex.fromBufferAttribute(positions, i);
+        const n = 0.82 + rng() * 0.34 + fbm3(vertex.x * 1.9, vertex.y * 1.9, vertex.z * 1.9) * 0.18;
+        vertex.multiplyScalar(n);
+        positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+      }
+      geometry.computeVertexNormals();
+      return geometry;
+    }
+
+    function displacedSphere(radius, widthSegments, heightSegments, seed) {
+      const geometry = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
+      const rng = randomFor(seed);
+      const positions = geometry.attributes.position;
+      const vertex = new THREE.Vector3();
+      for (let i = 0; i < positions.count; i += 1) {
+        vertex.fromBufferAttribute(positions, i);
+        const n = 0.95 + fbm3(vertex.x * 2.8, vertex.y * 3.4, vertex.z * 2.8) * 0.13 + (rng() - 0.5) * 0.025;
+        vertex.multiplyScalar(n);
+        positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+      }
+      geometry.computeVertexNormals();
+      return geometry;
+    }
+
+    function irregularPlateGeometry(radius, height, segments, seed) {
+      const rng = randomFor(seed);
+      const vertices = [];
+      const indices = [];
+      vertices.push(0, height * 0.5, 0, 0, -height * 0.5, 0);
+
+      for (let i = 0; i < segments; i += 1) {
+        const angle = (i / segments) * Math.PI * 2;
+        const wobble = 1 + Math.sin(angle * 3.2 + rng() * 3) * 0.07 + Math.sin(angle * 8.1) * 0.035 + (rng() - 0.5) * 0.045;
+        const x = Math.cos(angle) * radius * wobble;
+        const z = Math.sin(angle) * radius * wobble;
+        vertices.push(x, height * 0.5 + (rng() - 0.5) * 0.012, z, x * 0.96, -height * 0.5, z * 0.96);
+      }
+
+      for (let i = 0; i < segments; i += 1) {
+        const next = (i + 1) % segments;
+        const top = 2 + i * 2;
+        const bottom = top + 1;
+        const nextTop = 2 + next * 2;
+        const nextBottom = nextTop + 1;
+        indices.push(0, top, nextTop);
+        indices.push(1, nextBottom, bottom);
+        indices.push(top, bottom, nextBottom, top, nextBottom, nextTop);
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+      return geometry;
+    }
+
+    function fbm2(x, y) {
+      return Math.sin(x * 1.7 + y * 0.9) * 0.45 + Math.sin(x * 3.1 - y * 1.6) * 0.26 + Math.sin(x * 6.2 + y * 4.4) * 0.12;
+    }
+
+    function fbm3(x, y, z) {
+      return Math.sin(x * 1.3 + y * 1.7 + z * 0.8) * 0.45 + Math.sin(x * 3.1 - y * 1.9 + z * 2.2) * 0.25 + Math.sin(x * 6.2 + y * 4.1 - z * 3.3) * 0.1;
+    }
+
+    function tint(color, lightnessOffset) {
+      const adjusted = new THREE.Color(color);
+      adjusted.offsetHSL(0, -0.04, lightnessOffset);
+      return adjusted.getHex();
+    }
+
+    function offsetColor(color, lightnessOffset) {
+      const adjusted = new THREE.Color(color);
+      adjusted.offsetHSL(0, -0.04, lightnessOffset);
+      return adjusted.getHex();
+    }
+
+    function mutedSeedColor(seed) {
+      const color = new THREE.Color();
+      color.setHSL((seed % 360) / 360, 0.18 + ((seed >>> 4) % 12) / 100, 0.48 + ((seed >>> 8) % 16) / 100);
+      return color.getHex();
+    }
+
+    function morphologyForId(id) {
+      if (id.includes('stock') || id.includes('market')) return 'branching';
+      if (id.includes('news')) return 'fan';
+      if (id.includes('filing') || id.includes('sec')) return 'brain';
+      if (id.includes('social') || id.includes('childcare')) return 'anemone';
+      return 'plate';
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function hashText(value) {
+      let result = 2166136261;
+      const text = String(value ?? '');
+      for (let i = 0; i < text.length; i += 1) {
+        result ^= text.charCodeAt(i);
+        result = Math.imul(result, 16777619);
+      }
+      return result >>> 0;
+    }
+
+    function lerpAngle(current, target, amount) {
+      let delta = ((target - current + Math.PI) % (Math.PI * 2)) - Math.PI;
+      if (delta < -Math.PI) delta += Math.PI * 2;
+      return current + delta * amount;
+    }
+
+    function randomFor(seed) {
+      let value = 0x811c9dc5;
+      const text = String(seed);
+      for (let i = 0; i < text.length; i += 1) {
+        value ^= text.charCodeAt(i);
+        value = Math.imul(value, 0x01000193);
+      }
+      return function next() {
+        value += 0x6d2b79f5;
+        let t = value;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+  </script>
+</body>
+</html>
