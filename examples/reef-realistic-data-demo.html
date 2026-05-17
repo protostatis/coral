@@ -7,16 +7,16 @@
   <style>
     :root {
       color-scheme: dark;
-      --ink: #e7f5ee;
-      --muted: #9abdb4;
-      --dim: #6f9b92;
-      --line: rgba(209, 244, 232, 0.18);
-      --panel: rgba(4, 18, 22, 0.72);
-      --panel-strong: rgba(3, 15, 18, 0.88);
-      --aqua: #8bdccc;
+      --ink: #ebfbff;
+      --muted: #acdcea;
+      --dim: #76bbd1;
+      --line: rgba(190, 236, 255, 0.22);
+      --panel: rgba(3, 28, 45, 0.68);
+      --panel-strong: rgba(2, 22, 36, 0.9);
+      --aqua: #8be8ff;
       --sand: #d9bc86;
       --clay: #b98158;
-      --deep: #031216;
+      --deep: #031b2d;
       --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       --serif: Georgia, "Times New Roman", serif;
       --mono: "SFMono-Regular", "Roboto Mono", Consolas, monospace;
@@ -68,8 +68,9 @@
     .water-volume {
       z-index: 2;
       background:
-        radial-gradient(circle at 48% 0%, rgba(111, 202, 217, 0.22), transparent 34rem),
-        linear-gradient(180deg, rgba(8, 81, 102, 0.34), rgba(2, 24, 30, 0.08) 46%, rgba(0, 8, 10, 0.36));
+        radial-gradient(circle at 48% 0%, rgba(111, 222, 255, 0.34), transparent 34rem),
+        radial-gradient(circle at 78% 24%, rgba(54, 180, 255, 0.16), transparent 30rem),
+        linear-gradient(180deg, rgba(18, 139, 205, 0.36), rgba(5, 76, 128, 0.14) 48%, rgba(0, 38, 70, 0.22));
       mix-blend-mode: screen;
     }
 
@@ -78,7 +79,7 @@
       opacity: 0.10;
       background-image:
         radial-gradient(circle, rgba(255,255,255,0.65) 0 0.75px, transparent 1px),
-        radial-gradient(circle, rgba(144,213,202,0.25) 0 0.8px, transparent 1px);
+        radial-gradient(circle, rgba(136,220,255,0.32) 0 0.8px, transparent 1px);
       background-size: 83px 83px, 137px 137px;
       animation: grain-drift 18s linear infinite;
     }
@@ -86,8 +87,8 @@
     .vignette {
       z-index: 4;
       background:
-        radial-gradient(ellipse at 50% 42%, transparent 0 42%, rgba(1, 8, 10, 0.52) 100%),
-        linear-gradient(90deg, rgba(1, 8, 10, 0.55), transparent 24%, transparent 76%, rgba(1, 8, 10, 0.6));
+        radial-gradient(ellipse at 50% 42%, transparent 0 46%, rgba(0, 17, 32, 0.34) 100%),
+        linear-gradient(90deg, rgba(0, 17, 32, 0.32), transparent 24%, transparent 76%, rgba(0, 17, 32, 0.36));
     }
 
     .label-layer { z-index: 8; }
@@ -100,9 +101,9 @@
     .hud {
       position: fixed;
       z-index: 10;
-      inset: 20px;
+      inset: 16px;
       display: grid;
-      grid-template-columns: minmax(292px, 390px) minmax(0, 1fr) minmax(292px, 380px);
+      grid-template-columns: minmax(0, 1fr) minmax(292px, 380px);
       grid-template-rows: auto 1fr;
       gap: 16px;
       pointer-events: none;
@@ -112,22 +113,48 @@
       pointer-events: auto;
       border: 1px solid var(--line);
       border-radius: 24px;
-      background: linear-gradient(180deg, rgba(9, 39, 45, 0.75), rgba(3, 16, 19, 0.72)), var(--panel);
-      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      background: linear-gradient(180deg, rgba(5, 55, 82, 0.7), rgba(2, 24, 38, 0.7)), var(--panel);
+      box-shadow: 0 28px 90px rgba(0, 18, 36, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(18px) saturate(1.12);
     }
 
     .intro {
       grid-column: 1;
-      grid-row: 1 / span 2;
+      grid-row: 1;
       align-self: start;
-      max-height: calc(100vh - 40px);
-      overflow: auto;
-      padding: 24px;
+      width: min(840px, calc(100vw - 430px));
+      max-height: none;
+      overflow: visible;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(150px, 190px) minmax(250px, 1fr) minmax(300px, auto);
+      gap: 8px 10px;
+      align-items: end;
     }
 
-    .inspector {
+    .intro .eyebrow,
+    .intro h1 { grid-column: 1; }
+
+    .intro .eyebrow { margin-bottom: 4px; }
+
+    .intro .search-box {
+      grid-column: 2;
+      grid-row: 1 / span 3;
+      align-self: end;
+    }
+
+    .intro .controls {
       grid-column: 3;
+      grid-row: 1 / span 3;
+      align-self: end;
+      justify-content: flex-end;
+    }
+
+    .intro .section-title,
+    .intro .dna-list { grid-column: 1 / -1; }
+
+    .inspector {
+      grid-column: 2;
       grid-row: 1 / span 2;
       align-self: start;
       max-height: calc(100vh - 40px);
@@ -153,7 +180,14 @@
       line-height: 0.95;
     }
 
-    h1 { font-size: clamp(3.1rem, 6.2vw, 5.8rem); }
+    h1 {
+      font-family: var(--mono);
+      font-size: clamp(0.72rem, 1vw, 0.92rem);
+      letter-spacing: 0.08em;
+      line-height: 1.16;
+      text-transform: uppercase;
+    }
+
     h2 { font-size: clamp(2rem, 3.5vw, 3.5rem); }
 
     p {
@@ -162,47 +196,28 @@
     }
 
     .lede {
+      display: none;
       margin: 18px 0 16px;
       color: #cbe6df;
       font-size: 1rem;
-    }
-
-    .source-status {
-      display: inline-flex;
-      align-items: center;
-      min-height: 32px;
-      max-width: 100%;
-      margin: 2px 0 14px;
-      border: 1px solid rgba(211, 239, 226, 0.2);
-      border-radius: 999px;
-      color: #dcefe8;
-      background: rgba(5, 24, 28, 0.58);
-      padding: 0 11px;
-      font-family: var(--mono);
-      font-size: 0.62rem;
-      font-weight: 900;
-      letter-spacing: 0.1em;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      text-transform: uppercase;
-      white-space: nowrap;
     }
 
     .search-box {
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 8px;
-      margin: 16px 0 12px;
+      margin: 0;
+      max-width: 430px;
     }
 
     .search-box input {
       min-width: 0;
-      height: 42px;
+      height: 34px;
       border: 1px solid var(--line);
       border-radius: 999px;
       outline: 0;
       color: var(--ink);
-      background: rgba(5, 20, 24, 0.48);
+      background: rgba(3, 32, 52, 0.52);
       padding: 0 14px;
     }
 
@@ -212,18 +227,18 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin: 12px 0 20px;
+      margin: 0;
     }
 
     button {
-      min-height: 42px;
+      min-height: 34px;
       border: 1px solid var(--line);
       border-radius: 999px;
       color: var(--ink);
-      background: rgba(4, 33, 38, 0.58);
-      padding: 0 14px;
-      font: 900 0.68rem/1 var(--mono);
-      letter-spacing: 0.13em;
+      background: rgba(4, 45, 70, 0.58);
+      padding: 0 10px;
+      font: 900 0.58rem/1 var(--mono);
+      letter-spacing: 0.11em;
       text-transform: uppercase;
       cursor: pointer;
     }
@@ -232,7 +247,7 @@
     button[aria-pressed="true"] {
       color: #041216;
       border-color: rgba(211, 239, 226, 0.8);
-      background: linear-gradient(135deg, #d8bf87, #8bdccc);
+      background: linear-gradient(135deg, #c5f3ff, #73dfff);
     }
 
     .section-title {
@@ -240,29 +255,34 @@
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      margin: 16px 0 10px;
+      margin: 4px 0 0;
       color: var(--dim);
       font-family: var(--mono);
-      font-size: 0.64rem;
+      font-size: 0.56rem;
       font-weight: 900;
       letter-spacing: 0.15em;
       text-transform: uppercase;
     }
 
     .dna-list {
-      display: grid;
-      gap: 10px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 1px;
+      scrollbar-width: thin;
     }
+
+    .dna-list[hidden] { display: none; }
 
     .dna-card {
       display: grid;
       grid-template-columns: auto 1fr;
       align-items: center;
-      gap: 12px;
-      width: 100%;
-      min-height: 68px;
-      border-radius: 18px;
-      padding: 10px;
+      gap: 9px;
+      min-width: 146px;
+      min-height: 46px;
+      border-radius: 14px;
+      padding: 7px;
       text-align: left;
       text-transform: none;
       letter-spacing: 0;
@@ -272,12 +292,12 @@
 
     .dna-card.is-active {
       border-color: rgba(230, 221, 188, 0.72);
-      background: rgba(126, 111, 82, 0.28);
+      background: rgba(69, 152, 186, 0.28);
     }
 
     .swatch {
-      width: 42px;
-      height: 42px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: var(--swatch);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.34), 0 14px 24px rgba(0,0,0,0.24);
@@ -287,7 +307,7 @@
       display: block;
       color: var(--ink);
       font-family: var(--mono);
-      font-size: 0.72rem;
+      font-size: 0.58rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
     }
@@ -296,12 +316,12 @@
       display: block;
       margin-top: 4px;
       color: var(--muted);
-      font-size: 0.84rem;
+      font-size: 0.66rem;
       line-height: 1.35;
     }
 
     .dna-card em {
-      display: block;
+      display: none;
       margin-top: 7px;
       color: rgba(203, 230, 223, 0.72);
       font-family: var(--mono);
@@ -335,7 +355,7 @@
       border: 1px solid var(--line);
       border-radius: 16px;
       padding: 12px;
-      background: rgba(5, 20, 24, 0.46);
+      background: rgba(3, 31, 50, 0.46);
     }
 
     .stat span {
@@ -423,8 +443,8 @@
     .reef-label > div {
       border: 1px solid rgba(209, 244, 232, 0.24);
       border-radius: 14px;
-      background: rgba(3, 15, 18, 0.78);
-      box-shadow: 0 14px 36px rgba(0,0,0,0.28);
+      background: rgba(2, 24, 38, 0.78);
+      box-shadow: 0 14px 36px rgba(0,18,36,0.28);
       padding: 8px 10px;
       backdrop-filter: blur(12px);
     }
@@ -481,8 +501,17 @@
     }
 
     @media (max-width: 1180px) {
-      .hud { grid-template-columns: minmax(280px, 360px) 1fr; }
-      .inspector { grid-column: 2; }
+      .intro { width: calc(100vw - 420px); }
+    }
+
+    @media (max-width: 1040px) {
+      .intro {
+        display: block;
+        width: calc(100vw - 420px);
+      }
+
+      .intro .search-box { margin-top: 8px; }
+      .intro .controls { margin-top: 8px; justify-content: flex-start; }
     }
 
     @media (max-width: 860px) {
@@ -495,6 +524,7 @@
         grid-template-columns: 1fr;
         padding: 16px;
       }
+      .intro { width: auto; }
       .intro,
       .inspector {
         grid-column: 1;
@@ -507,7 +537,7 @@
       .search-box,
       .stat-grid,
       .inside-row { grid-template-columns: 1fr; }
-      h1 { font-size: clamp(2.7rem, 17vw, 4rem); }
+      h1 { font-size: 0.86rem; }
     }
   </style>
 </head>
@@ -519,12 +549,9 @@
   <div class="label-layer" data-label-layer></div>
 
   <main class="hud">
-    <section class="panel intro" aria-label="Realistic reef controls">
+    <section class="panel intro" aria-label="Reef controls">
       <p class="eyebrow">Data-backed realism pass</p>
       <h1>Evidence reef with colony DNA.</h1>
-      <p class="lede">This merges the realistic fidelity pass with Coral's read-time reef model. Similar human-driven artifacts co-grow as muted reef colonies, while the inspector exposes domains, signals, tools, and raw capture links.</p>
-      <div class="source-status" data-source-status>Static fallback reef</div>
-
       <div class="search-box">
         <input data-query type="search" placeholder="Try: housing, childcare, stocks, docs">
         <button type="button" data-search>Pulse</button>
@@ -537,8 +564,7 @@
         <button type="button" data-fish aria-pressed="true">Fish</button>
       </div>
 
-      <div class="section-title"><span>Colony DNA</span><span>read-time groups</span></div>
-      <div class="dna-list" data-dna-list></div>
+      <div class="dna-list" data-dna-list hidden></div>
     </section>
 
     <aside class="panel inspector" aria-label="Selected colony details">
@@ -783,8 +809,8 @@
     let selectionDisk;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x05242d);
-    scene.fog = new THREE.FogExp2(0x0a4b58, 0.062);
+    scene.background = new THREE.Color(0x075f94);
+    scene.fog = new THREE.FogExp2(0x18a8d4, 0.045);
 
     const camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 80);
     camera.position.set(0.25, 2.75, 8.2);
@@ -794,7 +820,7 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.98;
+    renderer.toneMappingExposure = 1.08;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     root.appendChild(renderer.domElement);
@@ -831,7 +857,6 @@
       selectColony(selectedId, { silent: true });
       window.__reefRealisticDataState.stage = 'animate';
       animate();
-      updateSourceStatus();
       window.__reefRealisticDataState.ready = true;
     } catch (error) {
       window.__reefRealisticDataState.error = error.stack || String(error);
@@ -904,9 +929,9 @@
     }
 
     function addLights() {
-      scene.add(new THREE.HemisphereLight(0x9bd3d4, 0x0a1515, 1.15));
+      scene.add(new THREE.HemisphereLight(0xc9f9ff, 0x0b2433, 1.28));
 
-      const sun = new THREE.DirectionalLight(0xf2fff1, 1.85);
+      const sun = new THREE.DirectionalLight(0xf4fdff, 2.05);
       sun.position.set(-4.8, 7.8, 4.2);
       sun.castShadow = true;
       sun.shadow.mapSize.set(2048, 2048);
@@ -918,7 +943,7 @@
       sun.shadow.camera.bottom = -5;
       scene.add(sun);
 
-      const lowFill = new THREE.PointLight(0x2f948a, 2.2, 7, 2.2);
+      const lowFill = new THREE.PointLight(0x37c9ff, 2.6, 7.5, 2.1);
       lowFill.position.set(1.8, 0.3, 2.7);
       scene.add(lowFill);
     }
@@ -936,7 +961,7 @@
       }
       floorGeometry.computeVertexNormals();
       const floor = new THREE.Mesh(floorGeometry, new THREE.MeshStandardMaterial({
-        color: 0x305247,
+        color: 0x2d7280,
         roughness: 0.96,
         metalness: 0,
         bumpMap: textureFor('sand-grain'),
@@ -947,7 +972,7 @@
       scene.add(floor);
 
       const rng = randomFor('substrate-rocks');
-      const rockColors = [0x4c5c58, 0x605b57, 0x686151, 0x4c625c, 0x555463, 0x74634f];
+      const rockColors = [0x4e6b72, 0x596d73, 0x6a735f, 0x4d7480, 0x536778, 0x746a58];
       for (let i = 0; i < 34; i += 1) {
         const geometry = roughRockGeometry(0.26 + rng() * 0.56, 'rock:' + i);
         const material = new THREE.MeshStandardMaterial({ color: rockColors[i % rockColors.length], roughness: 0.98, metalness: 0, bumpMap: textureFor('rock-pitting'), bumpScale: 0.04 });
@@ -960,7 +985,7 @@
         scene.add(rock);
       }
 
-      const ledgeMaterial = new THREE.MeshStandardMaterial({ color: 0x343a38, roughness: 0.98, metalness: 0 });
+      const ledgeMaterial = new THREE.MeshStandardMaterial({ color: 0x35505a, roughness: 0.98, metalness: 0 });
       for (let i = 0; i < 8; i += 1) {
         const ledge = new THREE.Mesh(new THREE.BoxGeometry(1.65 + i * 0.08, 0.16, 0.78), ledgeMaterial);
         ledge.position.set(-3.65 + i * 1.02, -0.92 + Math.sin(i * 0.84) * 0.1, 1.88 + Math.cos(i * 0.72) * 0.2);
@@ -1534,17 +1559,6 @@
         recency: colony.recency || fallback.recency,
         inspection: colony.inspection || fallback.inspection
       };
-    }
-
-    function updateSourceStatus() {
-      const node = document.querySelector('[data-source-status]');
-      if (!node) return;
-      if (!reefModel) {
-        node.textContent = 'Static fallback reef';
-        return;
-      }
-      const stats = reefModel.stats || {};
-      node.textContent = (reefModel.source || 'reef data') + ' · ' + (stats.capture_count || 0) + ' captures · ' + (stats.source_count || 0) + ' sources · ' + (stats.colony_count || colonies.length) + ' colonies';
     }
 
     function animate() {
