@@ -28,18 +28,11 @@
     "src",
     "examples/demo.js",
     "examples/searchagentsky-producer.js",
-    "examples/ui-demo.js",
-    "examples/coral-ui-demo.html",
-    "examples/coral-explorer-demo.html",
-    "examples/reef-renderer-deck.html",
-    "examples/reef-fidelity-spike.html",
-    "examples/reef-fidelity-demo.html",
     "examples/reef-realistic-data-demo.html",
     "README.md"
   ],
   "scripts": {
     "demo": "node examples/demo.js",
-    "demo:ui": "node examples/ui-demo.js",
     "lint": "node --check src/*.js && node --check test/*.test.js && node --check examples/*.js",
     "test": "node --test test/*.test.js"
   },

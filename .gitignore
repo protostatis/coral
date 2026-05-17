@@ -1,5 +1,4 @@
 .coral/
-examples/.coral-ui-demo/
 node_modules/
 coverage/
 .DS_Store
