@@ -33,6 +33,7 @@
     "examples/coral-explorer-demo.html",
     "examples/reef-renderer-deck.html",
     "examples/reef-fidelity-spike.html",
+    "examples/reef-fidelity-demo.html",
     "README.md"
   ],
   "scripts": {

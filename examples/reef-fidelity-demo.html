@@ -1,0 +1,1627 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coral Fidelity Spike</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #eafff7;
+      --muted: #9bcfc4;
+      --dim: #5e9e96;
+      --line: rgba(191, 255, 242, 0.18);
+      --glass: rgba(4, 24, 30, 0.62);
+      --glass-strong: rgba(4, 22, 28, 0.82);
+      --aqua: #52d9c9;
+      --lime: #b4f06d;
+      --amber: #ffd27c;
+      --coral: #ff8d79;
+      --rose: #f9a7bd;
+      --violet: #b798ff;
+      --deep: #031116;
+      --serif: Georgia, 'Times New Roman', serif;
+      --mono: 'SFMono-Regular', 'Roboto Mono', 'Cascadia Code', Consolas, monospace;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      font-family: var(--sans);
+      background: var(--deep);
+    }
+
+    button,
+    input { font: inherit; }
+
+    a { color: inherit; }
+
+    #reef-root,
+    #reef-root canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #reef-root canvas {
+      cursor: grab;
+      touch-action: none;
+    }
+
+    body.is-picking #reef-root canvas { cursor: pointer; }
+    body.is-dragging #reef-root canvas { cursor: grabbing; }
+
+    .water-haze,
+    .caustics,
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .water-haze {
+      z-index: 2;
+      background:
+        radial-gradient(circle at 50% 8%, rgba(126, 230, 255, 0.28), transparent 34rem),
+        linear-gradient(180deg, rgba(2, 74, 98, 0.28), rgba(0, 18, 26, 0.08) 46%, rgba(0, 8, 12, 0.32));
+      mix-blend-mode: screen;
+    }
+
+    .caustics {
+      z-index: 3;
+      opacity: 0.24;
+      background-image:
+        radial-gradient(ellipse at 10% 8%, transparent 0 34%, rgba(211, 255, 246, 0.42) 35% 36%, transparent 38%),
+        radial-gradient(ellipse at 70% 18%, transparent 0 40%, rgba(211, 255, 246, 0.34) 41% 42%, transparent 44%),
+        radial-gradient(ellipse at 35% 72%, transparent 0 39%, rgba(211, 255, 246, 0.26) 40% 41%, transparent 43%);
+      background-size: 420px 260px, 520px 300px, 640px 360px;
+      animation: caustic-drift 13s linear infinite;
+    }
+
+    .grain {
+      z-index: 4;
+      opacity: 0.12;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,0.75) 0 1px, transparent 1.2px),
+        radial-gradient(circle, rgba(168, 255, 237, 0.34) 0 1px, transparent 1.2px);
+      background-position: 0 0, 29px 31px;
+      background-size: 87px 87px, 131px 131px;
+    }
+
+    @keyframes caustic-drift {
+      from { transform: translate3d(-4%, -2%, 0) rotate(0deg) scale(1.02); }
+      to { transform: translate3d(4%, 2%, 0) rotate(2deg) scale(1.08); }
+    }
+
+    .hud {
+      position: fixed;
+      z-index: 10;
+      inset: 18px;
+      display: grid;
+      grid-template-columns: minmax(300px, 390px) minmax(0, 1fr) minmax(300px, 380px);
+      grid-template-rows: auto 1fr auto;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .panel {
+      pointer-events: auto;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(9, 47, 56, 0.74), rgba(3, 20, 26, 0.66)),
+        var(--glass);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255,255,255,0.08);
+      backdrop-filter: blur(18px) saturate(1.2);
+    }
+
+    .command-panel {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      align-self: start;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      padding: 22px;
+    }
+
+    .inspector {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+      align-self: start;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      padding: 22px;
+    }
+
+    .source-panel {
+      grid-column: 2 / span 2;
+      grid-row: 3;
+      align-self: end;
+      padding: 12px;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--aqua);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      font-family: var(--serif);
+      line-height: 0.92;
+      letter-spacing: -0.06em;
+    }
+
+    h1 { font-size: clamp(3.1rem, 7vw, 5.9rem); }
+    h2 { font-size: clamp(2.1rem, 4vw, 3.8rem); }
+
+    p {
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .lede {
+      max-width: 32rem;
+      margin: 16px 0 18px;
+      color: #c7f5ec;
+      font-size: 1rem;
+    }
+
+    .search-box {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin: 18px 0;
+    }
+
+    .search-box input {
+      min-width: 0;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      outline: 0;
+      color: var(--ink);
+      background: rgba(0, 12, 18, 0.48);
+      padding: 0 14px;
+    }
+
+    .search-box input::placeholder { color: rgba(201, 246, 236, 0.45); }
+
+    .search-box button,
+    .action-row button,
+    .dna-card {
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: rgba(4, 38, 47, 0.58);
+    }
+
+    .search-box button,
+    .action-row button {
+      height: 44px;
+      border-radius: 999px;
+      padding: 0 14px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .search-box button:hover,
+    .action-row button:hover,
+    .dna-card:hover {
+      border-color: rgba(185,255,235,0.48);
+      background: rgba(29, 91, 98, 0.74);
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .action-row button[aria-pressed="true"] {
+      color: #061519;
+      background: linear-gradient(135deg, var(--lime), var(--aqua));
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 14px 0 10px;
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .dna-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .dna-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      width: 100%;
+      min-height: 82px;
+      padding: 12px;
+      border-radius: 22px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .dna-card.is-active {
+      border-color: rgba(255, 231, 171, 0.72);
+      background: linear-gradient(135deg, rgba(255, 141, 121, 0.3), rgba(82, 217, 201, 0.18));
+    }
+
+    .dna-swatch {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      background: var(--swatch);
+      box-shadow: 0 0 28px color-mix(in srgb, var(--swatch), transparent 48%);
+    }
+
+    .dna-card strong {
+      display: block;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .dna-card span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.35;
+    }
+
+    .dna-card em {
+      display: block;
+      margin-top: 8px;
+      color: rgba(218, 255, 247, 0.72);
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      font-style: normal;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .inspector .species {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      margin: 14px 0 4px;
+      padding: 0 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 999px;
+      color: #031116;
+      background: linear-gradient(135deg, var(--amber), var(--coral), var(--aqua));
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 18px 0;
+    }
+
+    .stat {
+      min-height: 78px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(0, 12, 18, 0.34);
+    }
+
+    .stat span {
+      display: block;
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 9px;
+      color: var(--ink);
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+
+    .mapping {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .mapping div {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(0, 12, 18, 0.28);
+    }
+
+    .mapping strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .mapping span {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.42;
+    }
+
+    .capture-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .capture-list a,
+    .capture-list div {
+      display: block;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      color: var(--muted);
+      background: rgba(0, 12, 18, 0.24);
+      text-decoration: none;
+    }
+
+    .capture-list a:hover { border-color: rgba(190,255,241,0.5); }
+
+    .capture-list strong {
+      display: block;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.1em;
+      line-height: 1.35;
+      text-transform: uppercase;
+    }
+
+    .capture-list span {
+      display: block;
+      margin-top: 5px;
+      font-size: 0.75rem;
+      line-height: 1.35;
+    }
+
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 8px;
+    }
+
+    .source-card {
+      min-height: 84px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(2, 22, 29, 0.6);
+      text-decoration: none;
+    }
+
+    .source-card:hover {
+      border-color: rgba(190,255,241,0.52);
+      background: rgba(12, 58, 66, 0.72);
+    }
+
+    .source-card strong {
+      display: block;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .source-card span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.32;
+    }
+
+    .label-layer {
+      position: fixed;
+      z-index: 8;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .reef-label {
+      position: absolute;
+      min-width: 140px;
+      transform: translate(-50%, -115%);
+      opacity: 0;
+      transition: opacity 180ms ease, filter 180ms ease;
+      filter: blur(2px);
+    }
+
+    body.dna-lens .reef-label,
+    .reef-label.is-active {
+      opacity: 1;
+      filter: blur(0);
+    }
+
+    .reef-label > div {
+      padding: 8px 10px;
+      border: 1px solid rgba(210,255,244,0.24);
+      border-radius: 14px;
+      color: var(--ink);
+      background: rgba(2, 18, 23, 0.76);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+      backdrop-filter: blur(12px);
+    }
+
+    .reef-label strong {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .reef-label span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .label-dot {
+      position: absolute;
+      left: 50%;
+      bottom: -8px;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--aqua);
+      box-shadow: 0 0 22px var(--aqua);
+      transform: translateX(-50%);
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 30;
+      left: 50%;
+      bottom: 26px;
+      max-width: 480px;
+      padding: 12px 16px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(1, 18, 24, 0.86);
+      box-shadow: 0 18px 58px rgba(0,0,0,0.32);
+      transform: translate(-50%, 120%);
+      opacity: 0;
+      transition: transform 240ms ease, opacity 240ms ease;
+      pointer-events: none;
+      backdrop-filter: blur(14px);
+    }
+
+    .toast.is-visible {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
+
+    @media (max-width: 1180px) {
+      .hud {
+        grid-template-columns: minmax(280px, 360px) 1fr;
+      }
+
+      .inspector {
+        grid-column: 2;
+      }
+
+      .source-panel {
+        grid-column: 1 / span 2;
+      }
+
+      .source-grid { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+    }
+
+    @media (max-width: 860px) {
+      body { overflow: auto; }
+      #reef-root { min-height: 820px; }
+      .hud {
+        position: relative;
+        inset: auto;
+        display: grid;
+        grid-template-columns: 1fr;
+        padding: 16px;
+      }
+      .command-panel,
+      .inspector,
+      .source-panel {
+        grid-column: 1;
+        grid-row: auto;
+        max-height: none;
+      }
+      .source-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="reef-root" aria-hidden="true"></div>
+  <div class="water-haze"></div>
+  <div class="caustics"></div>
+  <div class="grain"></div>
+  <div class="label-layer" data-label-layer></div>
+
+  <main class="hud">
+    <section class="panel command-panel" aria-label="Coral fidelity controls">
+      <p class="eyebrow">Fidelity spike</p>
+      <h1>Colony DNA before graph UI.</h1>
+      <p class="lede">This prototype hides the graph and renders human-driven artifacts as grouped growth. Similar captures share morphology, cluster together, and reveal details only when you dive close.</p>
+
+      <p class="eyebrow" data-source-status>Static fallback reef</p>
+
+      <div class="search-box">
+        <input data-query type="search" placeholder="Try: stock, news, filings, docs, social">
+        <button type="button" data-search>Pulse</button>
+      </div>
+
+      <div class="action-row">
+        <button type="button" data-fit>Fit reef</button>
+        <button type="button" data-lens aria-pressed="false">DNA lens</button>
+      </div>
+
+      <div class="section-title"><span>Colony DNA</span><span>content groups</span></div>
+      <div class="dna-list" data-dna-list></div>
+    </section>
+
+    <aside class="panel inspector" aria-label="Selected colony details">
+      <p class="eyebrow">Selected colony</p>
+      <h2 data-colony-title>Stocks reef head</h2>
+      <div class="species" data-colony-dna>branching acropora</div>
+      <p data-colony-copy>Market captures should not appear as loose nodes. They should grow as a repeated branching colony with bright new tips and dense ticker clusters.</p>
+
+      <div class="stat-grid">
+        <div class="stat"><span>Captures</span><strong data-stat-captures>78</strong></div>
+        <div class="stat"><span>Sources</span><strong data-stat-sources>7</strong></div>
+        <div class="stat"><span>Growth</span><strong data-stat-growth>Fast</strong></div>
+      </div>
+
+      <div class="section-title"><span>Mapping rule</span><span>biology to UX</span></div>
+      <div class="mapping">
+        <div><strong>Similarity</strong><span data-map-similarity>Similar tickers and sectors bud from the same stalk instead of being linked with visible edges.</span></div>
+        <div><strong>Recency</strong><span data-map-recency>Fresh captures are pale growth tips. Older evidence is darker, thicker skeleton.</span></div>
+        <div><strong>Inspection</strong><span data-map-inspection>Individual pages appear only at macro range as polyps and tips.</span></div>
+      </div>
+
+      <div class="section-title"><span>Recent artifacts</span><span>raw captures</span></div>
+      <div class="capture-list" data-capture-list></div>
+    </aside>
+
+    <section class="panel source-panel" aria-label="Reference sources">
+      <div class="source-grid">
+        <a class="source-card" href="https://coralnet.ucsd.edu/" target="_blank" rel="noreferrer">
+          <strong>CoralNet</strong>
+          <span>5.4M reef images and 289M annotations. Best source for morphology and grouped texture.</span>
+        </a>
+        <a class="source-card" href="https://www.ncei.noaa.gov/products/coral-reef-information-system" target="_blank" rel="noreferrer">
+          <strong>NOAA CRIS</strong>
+          <span>Monitoring and reef data source for public-domain visual and ecological context.</span>
+        </a>
+        <a class="source-card" href="https://reefcloud.ai/" target="_blank" rel="noreferrer">
+          <strong>ReefCloud</strong>
+          <span>Monitoring imagery direction for colony surveys and repeated transect views.</span>
+        </a>
+        <a class="source-card" href="https://allencoralatlas.org/" target="_blank" rel="noreferrer">
+          <strong>Allen Atlas</strong>
+          <span>Macro habitat map reference, useful for reef geography and zones.</span>
+        </a>
+        <a class="source-card" href="https://commons.wikimedia.org/wiki/File:Coral_Outcrop_Flynn_Reef.jpg" target="_blank" rel="noreferrer">
+          <strong>Flynn Reef</strong>
+          <span>Reference photo for terracing, occlusion, blue haze, and mixed colony density.</span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" data-toast></div>
+
+  <script id="coral-reef-data" type="application/json">{"schema_version":1,"generated_at":"2026-05-17T03:39:03.618Z","query":"","ethos":"Human-driven artifacts co-grow into colonies so real interests and problems stay visible amid generated noise.","source":"read-time-coral-reef-model","stats":{"capture_count":9,"source_count":7,"run_count":2,"answer_count":2,"colony_count":5},"colonies":[{"id":"stocks","label":"Stocks reef head","content":"Stocks","dna":"branching acropora","morphology":"branching","color":"#d58b58","swatch":"linear-gradient(135deg, #f7e5c7, #d58b58 48%, #6b3c28)","position":[-2.8,-0.42,0.35],"captures":5,"sources":3,"growth":"Fresh","tags":["stock","stocks","market","ticker","finance","equity","shares","nasdaq","nyse","earnings","trending","top","moving","they","today","gainers","nvidia","finviz"],"copy":"Market artifacts co-grow as branching evidence: ticker pages, movers, filings, and market commentary bud from nearby stalks.","similarity":"Ticker, sector, and market-query overlap create neighboring branch clusters at read time.","recency":"Fresh market captures become pale growth tips; older evidence thickens the darker skeleton.","inspection":"Dive close to inspect recent captures, source domains, and query trails on branch tips.","first_captured_at":"2026-05-14T14:01:00.000Z","last_captured_at":"2026-05-15T14:05:00.000Z","recent_ratio":1,"top_domains":[{"domain":"finance.yahoo.com","count":2,"last_captured_at":"2026-05-15T14:03:00.000Z"},{"domain":"finviz.com","count":2,"last_captured_at":"2026-05-15T14:01:00.000Z"},{"domain":"nasdaq.com","count":1,"last_captured_at":"2026-05-15T14:05:00.000Z"}],"top_terms":[{"term":"stocks","score":45},{"term":"trending","score":45},{"term":"top","score":28},{"term":"moving","score":20},{"term":"they","score":20},{"term":"today","score":20},{"term":"gainers","score":8},{"term":"nvidia","score":8},{"term":"finviz","score":6},{"term":"quote","score":6}],"tool_counts":[{"tool":"ddm","count":5,"last_captured_at":"2026-05-15T14:05:00.000Z"}],"topic_samples":[{"topic":"Trending Stocks","count":5,"last_captured_at":"2026-05-15T14:05:00.000Z"}],"source_bands":[{"domain":"finance.yahoo.com","count":2,"weight":0.4,"seed":1406937691},{"domain":"finviz.com","count":2,"weight":0.4,"seed":2941519486},{"domain":"nasdaq.com","count":1,"weight":0.2,"seed":3274641173}],"timeline_bands":[{"date":"2026-05-15","count":3,"weight":0.6,"seed":3402390231},{"date":"2026-05-14","count":2,"weight":0.4,"seed":3576381179}],"capture_glyphs":[{"id":"c_2de416ff52bd4215","title":"Cerebras Market Activity","url":"https://www.nasdaq.com/market-activity/stocks/cbrs","domain":"nasdaq.com","captured_at":"2026-05-15T14:05:00.000Z","query":"what are the top trending stocks today and why are they moving?","topic":"Trending Stocks","tool":"ddm","run_id":"r_stocks_today","answer_id":"a_stocks_today","text_length":89,"duplicate_of":"","recency_score":1,"seed":1236155585,"size":0.0514,"position":[0.4367,1.3,-0.2376]},{"id":"c_d73a0f85becb4037","title":"NVIDIA Stock Quote","url":"https://finance.yahoo.com/quote/NVDA","domain":"finance.yahoo.com","captured_at":"2026-05-15T14:03:00.000Z","query":"what are the top trending stocks today and why are they moving?","topic":"Trending Stocks","tool":"ddm","run_id":"r_stocks_today","answer_id":"a_stocks_today","text_length":72,"duplicate_of":"","recency_score":0.9986,"seed":2022148709,"size":0.0503,"position":[0.3687,1.3164,-0.396]},{"id":"c_11ffa6f6e744403a","title":"Finviz Top Gainers","url":"https://finviz.com/screener.ashx?v=340&s=ta_topgainers&utm_source=demo","domain":"finviz.com","captured_at":"2026-05-15T14:01:00.000Z","query":"what are the top trending stocks today and why are they moving?","topic":"Trending Stocks","tool":"ddm","run_id":"r_stocks_today","answer_id":"a_stocks_today","text_length":120,"duplicate_of":"","recency_score":0.9972,"seed":4110023027,"size":0.053,"position":[-0.2183,1.3327,-0.6286]},{"id":"c_319f0f5424244e25","title":"NVIDIA Stock Quote","url":"https://finance.yahoo.com/quote/NVDA","domain":"finance.yahoo.com","captured_at":"2026-05-14T14:03:00.000Z","query":"what are the top trending stocks today and why are they moving?","topic":"Trending Stocks","tool":"ddm","run_id":"r_stocks_yesterday","answer_id":"a_stocks_yesterday","text_length":73,"duplicate_of":"","recency_score":0.0014,"seed":910691611,"size":0.0504,"position":[0.2709,0.1756,0.3445]},{"id":"c_80ccb5f73b4f4562","title":"Finviz Top Gainers","url":"https://finviz.com/screener.ashx?v=340&s=ta_topgainers","domain":"finviz.com","captured_at":"2026-05-14T14:01:00.000Z","query":"what are the top trending stocks today and why are they moving?","topic":"Trending Stocks","tool":"ddm","run_id":"r_stocks_yesterday","answer_id":"a_stocks_yesterday","text_length":106,"duplicate_of":"","recency_score":0,"seed":2161785340,"size":0.0523,"position":[0.2429,0.192,-0.1466]}],"recent_captures":[{"id":"c_2de416ff52bd4215","title":"Cerebras Market Activity","url":"https://www.nasdaq.com/market-activity/stocks/cbrs","domain":"nasdaq.com","captured_at":"2026-05-15T14:05:00.000Z","query":"what are the top trending stocks today and why are they moving?","topic":"Trending Stocks","tool":"ddm","text_preview":"Cerebras surged after its Nasdaq listing drew investor attention to AI chip alternatives."},{"id":"c_d73a0f85becb4037","title":"NVIDIA Stock Quote","url":"https://finance.yahoo.com/quote/NVDA","domain":"finance.yahoo.com","captured_at":"2026-05-15T14:03:00.000Z","query":"what are the top trending stocks today and why are they moving?","topic":"Trending Stocks","tool":"ddm","text_preview":"NVIDIA shares rose more than 4% as AI infrastructure demand accelerated."},{"id":"c_11ffa6f6e744403a","title":"Finviz Top Gainers","url":"https://finviz.com/screener.ashx?v=340&s=ta_topgainers&utm_source=demo","domain":"finviz.com","captured_at":"2026-05-15T14:01:00.000Z","query":"what are the top trending stocks today and why are they moving?","topic":"Trending Stocks","tool":"ddm","text_preview":"Top gainers include NVDA +4.4%, Cerebras +68.1%, POET +43.1%, and ONDS +26.5%. AI chip demand and IPO momentum dominate."},{"id":"c_319f0f5424244e25","title":"NVIDIA Stock Quote","url":"https://finance.yahoo.com/quote/NVDA","domain":"finance.yahoo.com","captured_at":"2026-05-14T14:03:00.000Z","query":"what are the top trending stocks today and why are they moving?","topic":"Trending Stocks","tool":"ddm","text_preview":"NVIDIA shares rose as investors continued buying AI infrastructure names."},{"id":"c_80ccb5f73b4f4562","title":"Finviz Top Gainers","url":"https://finviz.com/screener.ashx?v=340&s=ta_topgainers","domain":"finviz.com","captured_at":"2026-05-14T14:01:00.000Z","query":"what are the top trending stocks today and why are they moving?","topic":"Trending Stocks","tool":"ddm","text_preview":"Top gainers include NVDA +2.1%, AMD +1.4%, and MU -0.7%. AI chip demand remains the dominant market theme."}]},{"id":"docs","label":"Docs plate shelf","content":"Docs","dna":"layered plate coral","morphology":"plate","color":"#f2d9a7","swatch":"linear-gradient(135deg, #fff0c8, #d2a967 48%, #886a63)","position":[2.64,-0.48,0.22],"captures":1,"sources":1,"growth":"Fresh","tags":["docs","documentation","guide","reference","manual","wiki","api","tutorial","hosted","runner","actions","github","developer","limits","docs.github.com","details"],"copy":"Reference artifacts settle into stable shelves: docs, guides, APIs, and wiki pages layer into durable strata.","similarity":"Related references accrete as adjacent plates based on query, title, topic, and domain overlap.","recency":"New references form light rim growth on top of older shelves.","inspection":"Dive close to see page titles, canonical URLs, and source coverage along plate rims.","first_captured_at":"2026-05-15T14:11:00.000Z","last_captured_at":"2026-05-15T14:11:00.000Z","recent_ratio":1,"top_domains":[{"domain":"docs.github.com","count":1,"last_captured_at":"2026-05-15T14:11:00.000Z"}],"top_terms":[{"term":"documentation","score":10},{"term":"hosted","score":8},{"term":"runner","score":8},{"term":"actions","score":7},{"term":"github","score":7},{"term":"developer","score":5},{"term":"limits","score":5},{"term":"docs","score":3},{"term":"docs.github.com","score":2},{"term":"details","score":1}],"tool_counts":[{"tool":"ddm","count":1,"last_captured_at":"2026-05-15T14:11:00.000Z"}],"topic_samples":[{"topic":"Developer documentation","count":1,"last_captured_at":"2026-05-15T14:11:00.000Z"}],"source_bands":[{"domain":"docs.github.com","count":1,"weight":1,"seed":1429087287}],"timeline_bands":[{"date":"2026-05-15","count":1,"weight":1,"seed":2343664279}],"capture_glyphs":[{"id":"c_d6c24f55d4e046bd","title":"GitHub Actions hosted runner docs","url":"https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners","domain":"docs.github.com","captured_at":"2026-05-15T14:11:00.000Z","query":"github actions hosted runner documentation limits","topic":"Developer documentation","tool":"ddm","run_id":"r_stocks_today","answer_id":"a_stocks_today","text_length":115,"duplicate_of":"","recency_score":1,"seed":1678512358,"size":0.0527,"position":[0.1716,1.3,-0.0946]}],"recent_captures":[{"id":"c_d6c24f55d4e046bd","title":"GitHub Actions hosted runner docs","url":"https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners","domain":"docs.github.com","captured_at":"2026-05-15T14:11:00.000Z","query":"github actions hosted runner documentation limits","topic":"Developer documentation","tool":"ddm","text_preview":"Documentation explains hosted runner machine types, limits, usage guidance, and reference details for CI workloads."}]},{"id":"filings","label":"Filings brain coral","content":"Filings","dna":"boulder brain coral","morphology":"brain","color":"#b798ff","swatch":"linear-gradient(135deg, #e6d9ff, #b798ff 48%, #4b3159)","position":[-0.88,-0.62,1.28],"captures":1,"sources":1,"growth":"Fresh","tags":["filing","filings","sec","10-k","10-q","annual","quarterly","regulatory","prospectus","report","factors","risk","infrastructure","example"],"copy":"Regulatory artifacts become slow dense mass: filings, reports, issuer pages, and revisions carve durable grooves.","similarity":"Issuer, period, filing type, and source domain carve nearby grooves into the same colony.","recency":"New filings brighten a ridge without changing the whole colony quickly.","inspection":"Dive close to inspect filing sequences, dates, and source trails.","first_captured_at":"2026-05-15T14:14:00.000Z","last_captured_at":"2026-05-15T14:14:00.000Z","recent_ratio":1,"top_domains":[{"domain":"sec.gov","count":1,"last_captured_at":"2026-05-15T14:14:00.000Z"}],"top_terms":[{"term":"sec","score":9},{"term":"annual","score":8},{"term":"report","score":8},{"term":"factors","score":5},{"term":"filings","score":5},{"term":"risk","score":5},{"term":"10-k","score":4},{"term":"filing","score":4},{"term":"infrastructure","score":4},{"term":"example","score":3}],"tool_counts":[{"tool":"navigate","count":1,"last_captured_at":"2026-05-15T14:14:00.000Z"}],"topic_samples":[{"topic":"SEC filings","count":1,"last_captured_at":"2026-05-15T14:14:00.000Z"}],"source_bands":[{"domain":"sec.gov","count":1,"weight":1,"seed":2308864442}],"timeline_bands":[{"date":"2026-05-15","count":1,"weight":1,"seed":102895704}],"capture_glyphs":[{"id":"c_ee4be156e3da41fc","title":"Example annual report filing","url":"https://www.sec.gov/Archives/edgar/data/demo/10-k.htm","domain":"sec.gov","captured_at":"2026-05-15T14:14:00.000Z","query":"sec 10-k annual report ai infrastructure risk factors","topic":"SEC filings","tool":"navigate","run_id":"r_stocks_today","answer_id":"a_stocks_today","text_length":120,"duplicate_of":"","recency_score":1,"seed":1993608847,"size":0.053,"position":[-0.1696,1.3,0.1476]}],"recent_captures":[{"id":"c_ee4be156e3da41fc","title":"Example annual report filing","url":"https://www.sec.gov/Archives/edgar/data/demo/10-k.htm","domain":"sec.gov","captured_at":"2026-05-15T14:14:00.000Z","query":"sec 10-k annual report ai infrastructure risk factors","topic":"SEC filings","tool":"navigate","text_preview":"The annual report filing discusses risk factors, revenue concentration, capital expenditure, and regulatory disclosures."}]},{"id":"news","label":"News fan colony","content":"News","dna":"soft gorgonian fan","morphology":"fan","color":"#ff8d79","swatch":"linear-gradient(135deg, #ffd27c, #ff8d79 48%, #9b3e6d)","position":[0.18,-0.34,-0.08],"captures":1,"sources":1,"growth":"Fresh","tags":["news","article","press","headline","publisher","report","journal","breaking","chip","infrastructure","market","demand","latest","lifts","semiconductor","shares","reuters.com"],"copy":"News artifacts spread like a fan in current: headlines, publisher trails, and story updates gather into ribs.","similarity":"Shared stories, domains, and query language become ribs in the same fan instead of visible graph edges.","recency":"Current stories glow along the outer rim where human attention is still moving.","inspection":"Dive close to unfold headline captures, timestamps, and source provenance.","first_captured_at":"2026-05-15T14:08:00.000Z","last_captured_at":"2026-05-15T14:08:00.000Z","recent_ratio":1,"top_domains":[{"domain":"reuters.com","count":1,"last_captured_at":"2026-05-15T14:08:00.000Z"}],"top_terms":[{"term":"news","score":10},{"term":"chip","score":8},{"term":"infrastructure","score":6},{"term":"market","score":5},{"term":"demand","score":4},{"term":"latest","score":4},{"term":"lifts","score":3},{"term":"semiconductor","score":3},{"term":"shares","score":3},{"term":"reuters.com","score":2}],"tool_counts":[{"tool":"get_text","count":1,"last_captured_at":"2026-05-15T14:08:00.000Z"}],"topic_samples":[{"topic":"AI infrastructure news","count":1,"last_captured_at":"2026-05-15T14:08:00.000Z"}],"source_bands":[{"domain":"reuters.com","count":1,"weight":1,"seed":4159217323}],"timeline_bands":[{"date":"2026-05-15","count":1,"weight":1,"seed":3802479995}],"capture_glyphs":[{"id":"c_914f8e05820f4ba4","title":"AI chip demand lifts semiconductor shares","url":"https://www.reuters.com/technology/ai-chip-demand-markets-demo","domain":"reuters.com","captured_at":"2026-05-15T14:08:00.000Z","query":"latest ai chip market news","topic":"AI infrastructure news","tool":"get_text","run_id":"r_stocks_today","answer_id":"a_stocks_today","text_length":133,"duplicate_of":"","recency_score":1,"seed":1334472667,"size":0.0535,"position":[0.1998,1.3,-0.1059]}],"recent_captures":[{"id":"c_914f8e05820f4ba4","title":"AI chip demand lifts semiconductor shares","url":"https://www.reuters.com/technology/ai-chip-demand-markets-demo","domain":"reuters.com","captured_at":"2026-05-15T14:08:00.000Z","query":"latest ai chip market news","topic":"AI infrastructure news","tool":"get_text","text_preview":"News coverage says AI chip demand is shaping market attention, with investors comparing GPU suppliers and infrastructure bottlenecks."}]},{"id":"social","label":"Social anemone patch","content":"Social","dna":"anemone polyp field","morphology":"anemone","color":"#b4f06d","swatch":"linear-gradient(135deg, #dfff9b, #76e6a5 48%, #236b55)","position":[1.3,-0.76,1.56],"captures":1,"sources":1,"growth":"Fresh","tags":["social","reddit","post","thread","comment","forum","discussion","hn","hackernews","chip","investor","stocks","investing","about","reddit.com"],"copy":"Social artifacts pulse as local swarms: threads, comments, posts, and repeated claims form noisy polyp fields.","similarity":"Repeated questions and claims become neighboring tentacles; outliers stay near the patch edge.","recency":"Recent discussion pulses with warmer light and more motion.","inspection":"Dive close to inspect threads, authorship context if captured, timestamps, and URLs.","first_captured_at":"2026-05-15T14:17:00.000Z","last_captured_at":"2026-05-15T14:17:00.000Z","recent_ratio":1,"top_domains":[{"domain":"reddit.com","count":1,"last_captured_at":"2026-05-15T14:17:00.000Z"}],"top_terms":[{"term":"discussion","score":10},{"term":"chip","score":7},{"term":"investor","score":7},{"term":"stocks","score":7},{"term":"social","score":6},{"term":"investing","score":5},{"term":"reddit","score":4},{"term":"thread","score":4},{"term":"about","score":3},{"term":"reddit.com","score":2}],"tool_counts":[{"tool":"ddm","count":1,"last_captured_at":"2026-05-15T14:17:00.000Z"}],"topic_samples":[{"topic":"Social investing discussion","count":1,"last_captured_at":"2026-05-15T14:17:00.000Z"}],"source_bands":[{"domain":"reddit.com","count":1,"weight":1,"seed":3961831059}],"timeline_bands":[{"date":"2026-05-15","count":1,"weight":1,"seed":2807131287}],"capture_glyphs":[{"id":"c_8ca4bd52166f4a11","title":"Investor thread about AI chip stocks","url":"https://www.reddit.com/r/investing/comments/demo_ai_chip_stocks/","domain":"reddit.com","captured_at":"2026-05-15T14:17:00.000Z","query":"reddit ai chip stocks investor discussion","topic":"Social investing discussion","tool":"ddm","run_id":"r_stocks_today","answer_id":"a_stocks_today","text_length":120,"duplicate_of":"","recency_score":1,"seed":3705533007,"size":0.053,"position":[-0.3525,1.3,0.4292]}],"recent_captures":[{"id":"c_8ca4bd52166f4a11","title":"Investor thread about AI chip stocks","url":"https://www.reddit.com/r/investing/comments/demo_ai_chip_stocks/","domain":"reddit.com","captured_at":"2026-05-15T14:17:00.000Z","query":"reddit ai chip stocks investor discussion","topic":"Social investing discussion","tool":"ddm","text_preview":"A social discussion thread compares NVIDIA, AMD, Cerebras, valuation risk, and practical concerns from retail investors."}]}]}</script>
+  <script type="module">
+    import * as THREE from 'https://esm.sh/three@0.160.0';
+    import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+    const fallbackColonies = [
+      {
+        id: 'stocks',
+        label: 'Stocks reef head',
+        content: 'Stocks',
+        dna: 'branching acropora',
+        color: '#d58b58',
+        swatch: 'linear-gradient(135deg, #f7e5c7, #d58b58 48%, #6b3c28)',
+        position: [-2.8, -0.42, 0.35],
+        captures: 78,
+        sources: 7,
+        growth: 'Fast',
+        tags: ['stock', 'stocks', 'market', 'ticker', 'finance', 'equity'],
+        copy: 'Market captures should not appear as loose nodes. They should grow as a repeated branching colony with bright new tips and dense ticker clusters.',
+        similarity: 'Similar tickers and sectors bud from the same stalk instead of being linked with visible edges.',
+        recency: 'Fresh captures are pale branch tips. Older evidence is darker, thicker skeleton.',
+        inspection: 'Individual pages appear at macro range as polyps on branch tips.'
+      },
+      {
+        id: 'news',
+        label: 'News fan colony',
+        content: 'News',
+        dna: 'soft gorgonian fan',
+        color: '#ff8d79',
+        swatch: 'linear-gradient(135deg, #ffd27c, #ff8d79 48%, #9b3e6d)',
+        position: [0.18, -0.34, -0.08],
+        captures: 52,
+        sources: 11,
+        growth: 'Current',
+        tags: ['news', 'article', 'press', 'publisher', 'headline'],
+        copy: 'News behaves like a fan in current: story strands spread from publishers, crosslink into threads, and fade into blue haze as they age.',
+        similarity: 'Shared entities and storylines form ribs in the same fan instead of separate topic nodes.',
+        recency: 'Breaking stories glow along the outer rim where water current is strongest.',
+        inspection: 'A selected rib can unfold into headline captures and source provenance.'
+      },
+      {
+        id: 'docs',
+        label: 'Docs plate shelf',
+        content: 'Docs',
+        dna: 'layered plate coral',
+        color: '#f2d9a7',
+        swatch: 'linear-gradient(135deg, #fff0c8, #d2a967 48%, #886a63)',
+        position: [2.64, -0.48, 0.22],
+        captures: 41,
+        sources: 5,
+        growth: 'Layered',
+        tags: ['docs', 'documentation', 'wiki', 'guide', 'reference'],
+        copy: 'Documentation should feel like stable shelves: broad, layered, and easy to skim from above, with individual pages nested on plate rims.',
+        similarity: 'Related references accrete as adjacent shelves, not as a force-directed cluster.',
+        recency: 'New pages appear as light rim growth on top of older shelves.',
+        inspection: 'Zoom reveals plate rings, page ridges, and canonical URLs.'
+      },
+      {
+        id: 'filings',
+        label: 'Filings brain coral',
+        content: 'Filings',
+        dna: 'boulder brain coral',
+        color: '#b798ff',
+        swatch: 'linear-gradient(135deg, #e6d9ff, #b798ff 48%, #4b3159)',
+        position: [-0.88, -0.62, 1.28],
+        captures: 29,
+        sources: 4,
+        growth: 'Slow',
+        tags: ['filing', 'filings', 'sec', '10-k', '10-q', 'regulatory'],
+        copy: 'Filings are dense and slow. The right form is a boulder colony with folded ridges, chronology grooves, and durable mass.',
+        similarity: 'Issuer, period, and filing type carve neighboring grooves into the same brain coral surface.',
+        recency: 'New filings brighten a ridge but do not change the whole colony shape quickly.',
+        inspection: 'Dive close to read grooves as filing sequences and revision history.'
+      },
+      {
+        id: 'social',
+        label: 'Social anemone patch',
+        content: 'Social',
+        dna: 'anemone polyp field',
+        color: '#b4f06d',
+        swatch: 'linear-gradient(135deg, #dfff9b, #76e6a5 48%, #236b55)',
+        position: [1.3, -0.76, 1.56],
+        captures: 96,
+        sources: 9,
+        growth: 'Noisy',
+        tags: ['social', 'reddit', 'post', 'thread', 'comment', 'forum'],
+        copy: 'Social evidence is noisy, mobile, and locally repetitive. It should look like many small polyps pulsing around a patch, not as one giant node.',
+        similarity: 'Repeated claims become dense neighboring tentacles. Outliers sit on the edge of the patch.',
+        recency: 'Recent discussion pulses with motion and warmer light.',
+        inspection: 'Close inspection filters the swarm down to threads, authors, and timestamps.'
+      }
+    ];
+
+    let colonies = fallbackColonies;
+    let reefModel = null;
+
+    const root = document.querySelector('#reef-root');
+    const labelLayer = document.querySelector('[data-label-layer]');
+    const dnaList = document.querySelector('[data-dna-list]');
+    const queryInput = document.querySelector('[data-query]');
+    const toast = document.querySelector('[data-toast]');
+    const ui = {
+      title: document.querySelector('[data-colony-title]'),
+      dna: document.querySelector('[data-colony-dna]'),
+      copy: document.querySelector('[data-colony-copy]'),
+      captures: document.querySelector('[data-stat-captures]'),
+      sources: document.querySelector('[data-stat-sources]'),
+      growth: document.querySelector('[data-stat-growth]'),
+      similarity: document.querySelector('[data-map-similarity]'),
+      recency: document.querySelector('[data-map-recency]'),
+      inspection: document.querySelector('[data-map-inspection]'),
+      captureList: document.querySelector('[data-capture-list]')
+    };
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x052f3f);
+    scene.fog = new THREE.FogExp2(0x0a5d74, 0.054);
+
+    const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 80);
+    camera.position.set(0.2, 3.1, 8.9);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    root.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 0.15, 0.55);
+    controls.minDistance = 3.2;
+    controls.maxDistance = 13;
+    controls.maxPolarAngle = Math.PI * 0.62;
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const pickables = [];
+    const colonyGroups = new Map();
+    const labels = new Map();
+    const animated = [];
+    const clock = new THREE.Clock();
+    let selectedId = 'stocks';
+    let hoveredId = '';
+    let cameraGoal = null;
+    let selectionRing;
+    const textureCache = new Map();
+
+    window.__reefState = { stage: 'boot', ready: false };
+    try {
+      window.__reefState.stage = 'data';
+      reefModel = await loadReefModel();
+      if (reefModel?.colonies?.length) colonies = reefModel.colonies.map((colony, index) => normalizeLoadedColony(colony, index));
+      window.__reefState.stage = 'ui';
+      buildUi();
+      window.__reefState.stage = 'scene';
+      buildScene();
+      window.__reefState.stage = 'select';
+      selectColony(colonies[0]?.id || 'stocks', { focus: false, silent: true });
+      window.__reefState.stage = 'animate';
+      animate();
+      window.__reefState.ready = true;
+      updateSourceStatus();
+    } catch (error) {
+      window.__reefState.error = error.stack || String(error);
+      console.error(error);
+      showToast('Reef render failed: ' + error.message);
+    }
+
+    function buildUi() {
+      for (const colony of colonies) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'dna-card';
+        button.dataset.focus = colony.id;
+        button.style.setProperty('--swatch', colony.swatch);
+        button.innerHTML = '<span class="dna-swatch"></span><span><strong>' + escapeHtml(colony.content) + '</strong><span>' + escapeHtml(colony.dna) + '</span><em>' + colony.captures + ' captures grouped by growth</em></span>';
+        button.addEventListener('click', () => selectColony(colony.id, { focus: true }));
+        dnaList.appendChild(button);
+
+        const label = document.createElement('div');
+        label.className = 'reef-label';
+        label.innerHTML = '<div><strong>' + escapeHtml(colony.content) + '</strong><span>' + escapeHtml(colony.dna) + '</span></div><i class="label-dot"></i>';
+        labelLayer.appendChild(label);
+        labels.set(colony.id, label);
+      }
+
+      document.querySelector('[data-search]').addEventListener('click', runSearch);
+      queryInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') runSearch();
+      });
+      document.querySelector('[data-fit]').addEventListener('click', fitReef);
+      document.querySelector('[data-lens]').addEventListener('click', (event) => {
+        const pressed = event.currentTarget.getAttribute('aria-pressed') === 'true';
+        event.currentTarget.setAttribute('aria-pressed', String(!pressed));
+        document.body.classList.toggle('dna-lens', !pressed);
+      });
+      renderer.domElement.addEventListener('pointerdown', () => document.body.classList.add('is-dragging'));
+      window.addEventListener('pointerup', () => document.body.classList.remove('is-dragging'));
+      renderer.domElement.addEventListener('pointermove', handlePointerMove);
+      renderer.domElement.addEventListener('click', handleClick);
+      window.addEventListener('resize', handleResize);
+    }
+
+    function buildScene() {
+      scene.add(new THREE.HemisphereLight(0xb7fbff, 0x071014, 1.8));
+
+      const sun = new THREE.DirectionalLight(0xffffff, 2.1);
+      sun.position.set(-3.8, 7.2, 4.8);
+      scene.add(sun);
+
+      const reefGlow = new THREE.PointLight(0x58f1dc, 3.6, 10, 1.8);
+      reefGlow.position.set(0, 1.1, 2.6);
+      scene.add(reefGlow);
+
+      addSubstrate();
+      addWaterParticles();
+      addFishSchool();
+
+      for (const colony of colonies) {
+        const group = new THREE.Group();
+        group.position.set(...colony.position);
+        group.userData.colonyId = colony.id;
+        colonyGroups.set(colony.id, group);
+        scene.add(group);
+
+        const morphology = colony.morphology || morphologyForId(colony.id);
+        if (morphology === 'branching') buildBranchingColony(group, colony);
+        if (morphology === 'fan') buildFanColony(group, colony);
+        if (morphology === 'plate') buildPlateColony(group, colony);
+        if (morphology === 'brain') buildBrainColony(group, colony);
+        if (morphology === 'anemone') buildAnemoneColony(group, colony);
+        addSourcePatches(group, colony);
+        addCaptureGlyphs(group, colony, morphology);
+        group.scale.setScalar(0.86 + Math.min(0.55, Math.sqrt(Math.max(1, colony.captures || 1)) / 18));
+      }
+
+      addSelectionRing();
+    }
+
+    function addSubstrate() {
+      const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(22, 18, 1, 1),
+        new THREE.MeshStandardMaterial({ color: 0x254d43, roughness: 0.94, metalness: 0, transparent: true, opacity: 0.78 })
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -1.24;
+      floor.position.z = 0.95;
+      scene.add(floor);
+
+      const rng = randomFor('substrate');
+      const rockColors = [0x5c4a48, 0x6a5464, 0x3c4f50, 0x725f50, 0x483a42];
+      for (let i = 0; i < 34; i += 1) {
+        const geometry = new THREE.DodecahedronGeometry(0.55 + rng() * 0.55, 1);
+        const material = new THREE.MeshStandardMaterial({ color: rockColors[i % rockColors.length], roughness: 0.98, metalness: 0 });
+        const rock = new THREE.Mesh(geometry, material);
+        rock.position.set(-4.6 + rng() * 9.2, -1.05 + rng() * 0.7, -0.5 + rng() * 2.8);
+        rock.scale.set(1.1 + rng() * 1.4, 0.45 + rng() * 0.85, 0.75 + rng() * 1.5);
+        rock.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI);
+        scene.add(rock);
+      }
+
+      const ledgeMaterial = new THREE.MeshStandardMaterial({ color: 0x2f2b2e, roughness: 0.96, metalness: 0 });
+      for (let i = 0; i < 9; i += 1) {
+        const ledge = new THREE.Mesh(new THREE.BoxGeometry(1.8 + i * 0.05, 0.18, 0.9), ledgeMaterial);
+        ledge.position.set(-3.8 + i * 0.92, -0.92 + Math.sin(i) * 0.12, 1.75 + Math.cos(i * 0.7) * 0.18);
+        ledge.rotation.set(0.1 * Math.sin(i), -0.32 + i * 0.07, 0.04 * Math.cos(i));
+        scene.add(ledge);
+      }
+    }
+
+    function buildBranchingColony(group, colony) {
+      const rng = randomFor(colony.id);
+      const branchMat = coralMat(0xb36b42, 0x24110c, 0.02);
+      const liveMat = coralMat(0xe49b68, 0x3a170c, 0.03);
+      const tipMat = coralMat(0xffead5, 0xffb37e, 0.42);
+      const base = lumpyBase(group, colony, 0.62, 0x6f4a36);
+
+      const branchCount = clamp(16 + Math.round(Math.sqrt(colony.captures || 1) * 2.4) + Math.round((colony.sources || 1) * 0.8), 18, 44);
+      for (let i = 0; i < branchCount; i += 1) {
+        const angle = -Math.PI * 0.95 + (i / Math.max(1, branchCount - 1)) * Math.PI * 1.7 + (rng() - 0.5) * 0.4;
+        const start = new THREE.Vector3((rng() - 0.5) * 0.48, 0.04 + rng() * 0.15, (rng() - 0.5) * 0.34);
+        const height = 0.72 + rng() * 1.2;
+        const reach = 0.48 + rng() * 0.76;
+        const end = new THREE.Vector3(Math.cos(angle) * reach, height, Math.sin(angle) * reach * 0.62);
+        createBranch(group, start, end, 0.05 + rng() * 0.035, i % 3 === 0 ? liveMat : branchMat, colony);
+
+        const forkCount = 1 + Math.floor(rng() * 2) + Math.min(3, Math.floor((colony.sources || 1) / 3));
+        for (let j = 0; j < forkCount; j += 1) {
+          const t = 0.46 + rng() * 0.42;
+          const forkStart = start.clone().lerp(end, t);
+          const forkAngle = angle + (rng() - 0.5) * 1.35;
+          const forkEnd = forkStart.clone().add(new THREE.Vector3(Math.cos(forkAngle) * (0.25 + rng() * 0.34), 0.18 + rng() * 0.42, Math.sin(forkAngle) * (0.16 + rng() * 0.3)));
+          createBranch(group, forkStart, forkEnd, 0.023 + rng() * 0.018, liveMat, colony);
+          addPolyp(group, forkEnd, 0.06 + rng() * 0.024, tipMat, colony, true);
+        }
+        addPolyp(group, end, 0.07 + rng() * 0.035, tipMat, colony, true);
+      }
+
+      const polypCount = clamp(24 + Math.round((colony.captures || 1) * 0.75), 36, 110);
+      for (let i = 0; i < polypCount; i += 1) {
+        const p = new THREE.Vector3((rng() - 0.5) * 1.45, 0.16 + rng() * 1.1, (rng() - 0.5) * 0.9);
+        addPolyp(group, p, 0.025 + rng() * 0.025, tipMat, colony, i % 5 === 0);
+      }
+
+      animated.push({ type: 'pulseGroup', group, baseScale: 1, colonyId: colony.id, phase: 0.4 });
+      mark(base, colony);
+    }
+
+    function buildFanColony(group, colony) {
+      const rng = randomFor(colony.id);
+      const stemMat = coralMat(0xa33c65, 0x2a0815, 0.04);
+      const fanMat = coralMat(0xff8d79, 0x4d0f1f, 0.09);
+      const polypMat = coralMat(0xffd9aa, 0xff8d79, 0.24);
+      lumpyBase(group, colony, 0.48, 0x5a3348);
+      createBranch(group, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1.2, 0), 0.05, stemMat, colony);
+
+      const ribEnds = [];
+      const ribCount = clamp(9 + Math.round(Math.sqrt(colony.captures || 1) * 1.3) + Math.round((colony.sources || 1) * 0.55), 12, 30);
+      for (let i = 0; i < ribCount; i += 1) {
+        const a = -Math.PI * 0.08 + (i / (ribCount - 1)) * Math.PI * 1.13;
+        const radius = 1.08 + rng() * 0.52;
+        const end = new THREE.Vector3(Math.cos(a) * radius, 0.74 + Math.sin(a) * radius * 0.92, -0.1 + (rng() - 0.5) * 0.2);
+        ribEnds.push(end);
+        const mid = new THREE.Vector3(end.x * 0.38 + (rng() - 0.5) * 0.16, 0.62 + end.y * 0.28, -0.06 + rng() * 0.12);
+        createTube(group, [new THREE.Vector3(0, 0.55, 0), mid, end], 0.018 + rng() * 0.012, fanMat, colony);
+        addPolyp(group, end, 0.045 + rng() * 0.018, polypMat, colony, true);
+      }
+
+      const bandCount = clamp(4 + Math.round((colony.sources || 1) / 2), 5, 11);
+      for (let band = 0; band < bandCount; band += 1) {
+        const t = 0.2 + band * (0.7 / bandCount);
+        const bandPoints = ribEnds.map((end) => new THREE.Vector3(end.x * t, 0.55 + (end.y - 0.55) * t + Math.sin(t * 9) * 0.04, end.z));
+        for (let i = 0; i < bandPoints.length - 1; i += 1) {
+          createTube(group, [bandPoints[i], bandPoints[i + 1]], 0.009, fanMat, colony);
+        }
+      }
+
+      animated.push({ type: 'sway', group, amplitude: 0.028, speed: 0.8, phase: 1.7 });
+    }
+
+    function buildPlateColony(group, colony) {
+      const rng = randomFor(colony.id);
+      const plateMat = coralMat(0xd8b879, 0x2e1c12, 0.02);
+      const rimMat = coralMat(0xffefc2, 0xffd27c, 0.24);
+      lumpyBase(group, colony, 0.58, 0x665c54);
+
+      const plateCount = clamp(4 + Math.round(Math.sqrt(colony.captures || 1) * 0.8), 6, 14);
+      for (let i = 0; i < plateCount; i += 1) {
+        const radius = 0.52 + i * 0.08 + rng() * 0.1;
+        const geometry = new THREE.CylinderGeometry(radius, radius * (0.88 + rng() * 0.16), 0.075, 80, 1, false);
+        const plate = new THREE.Mesh(geometry, plateMat.clone());
+        plate.position.set((rng() - 0.5) * 0.55, 0.1 + i * 0.11, (rng() - 0.5) * 0.36);
+        plate.scale.set(1.15 + rng() * 0.75, 1, 0.55 + rng() * 0.42);
+        plate.rotation.set((rng() - 0.5) * 0.22, rng() * Math.PI, (rng() - 0.5) * 0.12);
+        mark(plate, colony);
+        group.add(plate);
+
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.96, 0.025, 8, 80), rimMat.clone());
+        rim.position.copy(plate.position);
+        rim.rotation.copy(plate.rotation);
+        rim.rotation.x += Math.PI / 2;
+        rim.scale.copy(plate.scale);
+        mark(rim, colony, { tip: i > 4 });
+        group.add(rim);
+
+        const tipCount = 8 + i + Math.min(12, colony.sources || 1);
+        for (let t = 0; t < tipCount; t += 1) {
+          const a = (t / tipCount) * Math.PI * 2;
+          const p = new THREE.Vector3(Math.cos(a) * radius * plate.scale.x * 0.9, plate.position.y + 0.07, Math.sin(a) * radius * plate.scale.z * 0.9);
+          p.x += plate.position.x;
+          p.z += plate.position.z;
+          addPolyp(group, p, 0.018 + rng() * 0.017, rimMat, colony, i > 5 && t % 4 === 0);
+        }
+      }
+    }
+
+    function buildBrainColony(group, colony) {
+      const rng = randomFor(colony.id);
+      const bodyMat = coralMat(0x8d73ba, 0x12071f, 0.03);
+      const ridgeMat = coralMat(0xd9c9ff, 0x7961a8, 0.12);
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.86, 48, 24), bodyMat);
+      body.scale.set(1.28, 0.64, 0.88);
+      body.position.y = 0.18;
+      mark(body, colony);
+      group.add(body);
+
+      const ridgeCount = clamp(8 + Math.round(Math.sqrt(colony.captures || 1) * 1.1), 10, 24);
+      for (let i = 0; i < ridgeCount; i += 1) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.28 + i * 0.035, 0.017, 8, 78), ridgeMat.clone());
+        ring.position.set((rng() - 0.5) * 0.18, 0.2 + Math.sin(i * 0.8) * 0.23, (rng() - 0.5) * 0.18);
+        ring.scale.set(1.4 + Math.sin(i) * 0.18, 0.72 + Math.cos(i * 0.7) * 0.16, 1);
+        ring.rotation.set(Math.PI / 2 + (rng() - 0.5) * 0.22, (rng() - 0.5) * 0.9, (rng() - 0.5) * 0.38);
+        mark(ring, colony, { tip: i > 10 });
+        group.add(ring);
+      }
+
+      const brainPolypCount = clamp(24 + Math.round((colony.captures || 1) * 0.42), 30, 88);
+      for (let i = 0; i < brainPolypCount; i += 1) {
+        const a = rng() * Math.PI * 2;
+        const r = 0.22 + rng() * 0.72;
+        const p = new THREE.Vector3(Math.cos(a) * r * 1.15, 0.36 + rng() * 0.32, Math.sin(a) * r * 0.75);
+        addPolyp(group, p, 0.018 + rng() * 0.018, ridgeMat, colony, i % 9 === 0);
+      }
+    }
+
+    function buildAnemoneColony(group, colony) {
+      const rng = randomFor(colony.id);
+      const baseMat = coralMat(0x2b6655, 0x071d17, 0.02);
+      const tentacleMats = [coralMat(0x83e6a4, 0x104525, 0.05), coralMat(0xb4f06d, 0x35550d, 0.08), coralMat(0x62ded2, 0x0d3d3a, 0.06)];
+      lumpyBase(group, colony, 0.72, 0x275749);
+
+      const tentacleCount = clamp(34 + Math.round((colony.captures || 1) * 0.7) + Math.round((colony.sources || 1) * 1.5), 48, 132);
+      for (let i = 0; i < tentacleCount; i += 1) {
+        const a = rng() * Math.PI * 2;
+        const r = Math.sqrt(rng()) * 0.95;
+        const start = new THREE.Vector3(Math.cos(a) * r, 0.03, Math.sin(a) * r * 0.7);
+        const curl = a + (rng() - 0.5) * 1.2;
+        const end = start.clone().add(new THREE.Vector3(Math.cos(curl) * (0.08 + rng() * 0.18), 0.26 + rng() * 0.48, Math.sin(curl) * (0.08 + rng() * 0.18)));
+        const mid = start.clone().lerp(end, 0.52).add(new THREE.Vector3((rng() - 0.5) * 0.16, 0.08 + rng() * 0.1, (rng() - 0.5) * 0.16));
+        const tube = createTube(group, [start, mid, end], 0.012 + rng() * 0.012, tentacleMats[i % tentacleMats.length], colony, { tentacle: true, phase: rng() * 6.28 });
+        addPolyp(group, end, 0.025 + rng() * 0.025, tentacleMats[(i + 1) % tentacleMats.length], colony, i % 6 === 0);
+        animated.push({ type: 'tentacle', mesh: tube, phase: rng() * 6.28, amplitude: 0.018 + rng() * 0.018, speed: 1.0 + rng() * 0.8 });
+      }
+      animated.push({ type: 'pulseGroup', group, baseScale: 1, colonyId: colony.id, phase: 2.4 });
+    }
+
+    function lumpyBase(group, colony, radius, color) {
+      const geometry = new THREE.DodecahedronGeometry(radius, 2);
+      const material = new THREE.MeshStandardMaterial({ color, roughness: 0.94, metalness: 0 });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.scale.set(1.2, 0.45, 0.82);
+      mesh.position.y = -0.04;
+      mark(mesh, colony);
+      group.add(mesh);
+      return mesh;
+    }
+
+    function createBranch(group, start, end, radius, material, colony, meta = {}) {
+      const length = start.distanceTo(end);
+      const geometry = new THREE.CylinderGeometry(radius * 0.58, radius, length, 10, 1, false);
+      const mesh = new THREE.Mesh(geometry, material.clone ? material.clone() : material);
+      mesh.position.copy(start).add(end).multiplyScalar(0.5);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(start).normalize());
+      mark(mesh, colony, meta);
+      group.add(mesh);
+      return mesh;
+    }
+
+    function createTube(group, points, radius, material, colony, meta = {}) {
+      const curve = new THREE.CatmullRomCurve3(points);
+      const geometry = new THREE.TubeGeometry(curve, 18, radius, 7, false);
+      const mesh = new THREE.Mesh(geometry, material.clone ? material.clone() : material);
+      mark(mesh, colony, meta);
+      group.add(mesh);
+      return mesh;
+    }
+
+    function addPolyp(group, position, radius, material, colony, tip = false) {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 12, 8), material.clone ? material.clone() : material);
+      mesh.position.copy(position);
+      mark(mesh, colony, { tip });
+      group.add(mesh);
+      return mesh;
+    }
+
+    function addSourcePatches(group, colony) {
+      const sources = (colony.source_bands || colony.top_domains || []).slice(0, 7);
+      if (!sources.length) return;
+      for (let i = 0; i < sources.length; i += 1) {
+        const source = sources[i];
+        const seed = source.seed || hashText((source.domain || source.tool || 'source') + ':' + i);
+        const angle = ((seed % 1000) / 1000) * Math.PI * 2;
+        const radius = 0.52 + i * 0.12 + Math.min(0.5, (source.count || 1) * 0.035);
+        const color = colorFromSeed(seed, 0.55, 0.55);
+        const material = coralMat(color, color, 0.04 + Math.min(0.18, source.weight || 0.05));
+        const patch = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.min(0.16, Math.sqrt(source.count || 1) * 0.035), 1), material);
+        patch.position.set(Math.cos(angle) * radius, -0.02 + (i % 3) * 0.035, Math.sin(angle) * radius * 0.66);
+        patch.scale.set(1.6, 0.42, 1.1);
+        patch.rotation.set(seed % 3, seed % 7, seed % 11);
+        mark(patch, colony);
+        group.add(patch);
+      }
+    }
+
+    function addCaptureGlyphs(group, colony, morphology) {
+      const glyphs = (colony.capture_glyphs?.length ? colony.capture_glyphs : syntheticGlyphs(colony)).slice(0, 56);
+      for (let i = 0; i < glyphs.length; i += 1) {
+        const glyph = glyphs[i];
+        const position = glyphPosition(glyph, morphology, i);
+        const recency = glyph.recency_score ?? (i < 8 ? 0.9 : 0.25);
+        const color = recency > 0.72 ? 0xfff1d0 : colorFromSeed(glyph.seed || hashText(glyph.id || String(i)), 0.62, 0.68);
+        const material = coralMat(color, color, 0.18 + recency * 0.62);
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(glyph.size || 0.042, 12, 8), material);
+        mesh.position.copy(position);
+        mesh.userData.captureGlyph = glyph;
+        mark(mesh, colony, { tip: recency > 0.5 });
+        group.add(mesh);
+        if (recency > 0.72) animated.push({ type: 'glyphPulse', mesh, phase: i * 0.47, baseScale: 1, speed: 1.4 + recency });
+      }
+    }
+
+    function syntheticGlyphs(colony) {
+      const count = clamp(Math.round(Math.sqrt(colony.captures || 1) * 3.2), 10, 42);
+      return Array.from({ length: count }, (_, index) => ({
+        id: colony.id + ':sample:' + index,
+        seed: hashText(colony.id + ':' + index),
+        size: 0.034 + (index % 5) * 0.004,
+        recency_score: index < Math.max(2, count * 0.22) ? 0.86 : 0.18 + (index % 6) * 0.08,
+      }));
+    }
+
+    function glyphPosition(glyph, morphology, index) {
+      const seed = glyph.seed || hashText(glyph.id || String(index));
+      const local = Array.isArray(glyph.position) ? new THREE.Vector3(glyph.position[0], glyph.position[1], glyph.position[2]) : new THREE.Vector3();
+      const t = ((seed % 1000) / 1000) * Math.PI * 2;
+      if (morphology === 'fan') return new THREE.Vector3(Math.cos(t) * (0.35 + Math.abs(local.x) * 0.7), 0.52 + Math.abs(local.y) * 0.92, -0.04 + Math.sin(t) * 0.08);
+      if (morphology === 'plate') return new THREE.Vector3(Math.cos(t) * (0.48 + Math.abs(local.x) * 0.72), 0.22 + (index % 7) * 0.07, Math.sin(t) * (0.26 + Math.abs(local.z) * 0.48));
+      if (morphology === 'brain') return new THREE.Vector3(Math.cos(t) * (0.28 + Math.abs(local.x) * 0.58), 0.35 + Math.abs(local.y) * 0.42, Math.sin(t) * (0.18 + Math.abs(local.z) * 0.46));
+      if (morphology === 'anemone') return new THREE.Vector3(Math.cos(t) * (0.24 + Math.abs(local.x) * 0.72), 0.22 + Math.abs(local.y) * 0.55, Math.sin(t) * (0.18 + Math.abs(local.z) * 0.5));
+      return new THREE.Vector3(local.x, 0.32 + Math.abs(local.y) * 1.05, local.z);
+    }
+
+    function coralMat(color, emissive = 0x000000, emissiveIntensity = 0) {
+      return new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.82,
+        metalness: 0,
+        emissive,
+        emissiveIntensity,
+        bumpMap: textureFor('coral-micro'),
+        bumpScale: 0.025
+      });
+    }
+
+    function textureFor(name) {
+      if (textureCache.has(name)) return textureCache.get(name);
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      const rng = randomFor('texture-' + name);
+      ctx.fillStyle = 'rgb(128,128,128)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < 900; i += 1) {
+        const x = rng() * canvas.width;
+        const y = rng() * canvas.height;
+        const r = 0.35 + rng() * 1.8;
+        const shade = Math.floor(92 + rng() * 94);
+        ctx.fillStyle = 'rgba(' + shade + ',' + shade + ',' + shade + ',' + (0.16 + rng() * 0.28).toFixed(3) + ')';
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (let i = 0; i < 46; i += 1) {
+        const y = rng() * canvas.height;
+        const wave = 6 + rng() * 18;
+        ctx.strokeStyle = 'rgba(210,210,210,0.14)';
+        ctx.lineWidth = 0.7 + rng() * 1.2;
+        ctx.beginPath();
+        for (let x = -8; x <= canvas.width + 8; x += 8) {
+          const py = y + Math.sin((x + rng() * 20) / wave) * (1.5 + rng() * 4.2);
+          if (x === -8) ctx.moveTo(x, py);
+          else ctx.lineTo(x, py);
+        }
+        ctx.stroke();
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(2.4, 2.4);
+      textureCache.set(name, texture);
+      return texture;
+    }
+
+    function mark(mesh, colony, meta = {}) {
+      mesh.userData.colonyId = colony.id;
+      mesh.userData.tip = Boolean(meta.tip);
+      mesh.userData.tentacle = Boolean(meta.tentacle);
+      pickables.push(mesh);
+      return mesh;
+    }
+
+    function addSelectionRing() {
+      const material = new THREE.MeshBasicMaterial({ color: 0x92ffee, transparent: true, opacity: 0.13, depthWrite: false, blending: THREE.AdditiveBlending });
+      selectionRing = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), material);
+      selectionRing.visible = false;
+      scene.add(selectionRing);
+      animated.push({ type: 'selectionRing', mesh: selectionRing });
+    }
+
+    function addWaterParticles() {
+      const rng = randomFor('particles');
+      const count = 640;
+      const positions = new Float32Array(count * 3);
+      const speeds = new Float32Array(count);
+      for (let i = 0; i < count; i += 1) {
+        positions[i * 3] = -8 + rng() * 16;
+        positions[i * 3 + 1] = -0.9 + rng() * 5.2;
+        positions[i * 3 + 2] = -4.4 + rng() * 9.2;
+        speeds[i] = 0.02 + rng() * 0.05;
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const material = new THREE.PointsMaterial({ color: 0xd9fff7, size: 0.018, transparent: true, opacity: 0.62, depthWrite: false });
+      const particles = new THREE.Points(geometry, material);
+      particles.userData.speeds = speeds;
+      scene.add(particles);
+      animated.push({ type: 'particles', points: particles });
+    }
+
+    function addFishSchool() {
+      const rng = randomFor('fish');
+      const fishMaterial = new THREE.MeshStandardMaterial({ color: 0xf7d177, roughness: 0.5, emissive: 0x7d4a10, emissiveIntensity: 0.08 });
+      const tailMaterial = new THREE.MeshStandardMaterial({ color: 0xffa875, roughness: 0.55, emissive: 0x5f210d, emissiveIntensity: 0.05 });
+
+      for (let i = 0; i < 11; i += 1) {
+        const fish = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 8), fishMaterial.clone());
+        body.scale.set(1.8, 0.82, 0.72);
+        fish.add(body);
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.08, 3), tailMaterial.clone());
+        tail.position.x = -0.1;
+        tail.rotation.z = Math.PI / 2;
+        fish.add(tail);
+        fish.position.set(-4.4 + rng() * 8.8, 0.7 + rng() * 2.5, -1.6 + rng() * 2.6);
+        fish.userData = { base: fish.position.clone(), speed: 0.12 + rng() * 0.18, phase: rng() * 6.28, radius: 0.2 + rng() * 0.7 };
+        scene.add(fish);
+        animated.push({ type: 'fish', group: fish });
+      }
+    }
+
+    function handlePointerMove(event) {
+      const hit = pick(event);
+      hoveredId = hit || '';
+      document.body.classList.toggle('is-picking', Boolean(hit));
+      updateCards();
+    }
+
+    function handleClick(event) {
+      const hit = pick(event);
+      if (hit) selectColony(hit, { focus: false });
+    }
+
+    function pick(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(pickables, false);
+      return hits.find((hit) => hit.object.userData.colonyId)?.object.userData.colonyId || '';
+    }
+
+    function selectColony(id, options = {}) {
+      const colony = colonies.find((item) => item.id === id);
+      if (!colony) return;
+      selectedId = id;
+      ui.title.textContent = colony.label;
+      ui.dna.textContent = colony.dna;
+      ui.copy.textContent = colony.copy;
+      ui.captures.textContent = String(colony.captures);
+      ui.sources.textContent = String(colony.sources);
+      ui.growth.textContent = colony.growth;
+      ui.similarity.textContent = colony.similarity;
+      ui.recency.textContent = colony.recency;
+      ui.inspection.textContent = colony.inspection;
+      renderCaptureList(colony);
+      updateCards();
+      moveSelectionRing(colony);
+      if (options.focus) focusColony(id);
+      if (!options.silent) showToast(colony.content + ' colony selected. ' + colony.dna + ' is the visible grouping grammar.');
+    }
+
+    function renderCaptureList(colony) {
+      const captures = (colony.recent_captures || []).slice(0, 4);
+      if (!captures.length) {
+        const domains = (colony.top_domains || []).slice(0, 4).map((entry) => entry.domain + ' × ' + entry.count).join(' · ');
+        ui.captureList.innerHTML = '<div><strong>Source texture</strong><span>' + escapeHtml(domains || 'Static visual sample; connect ?api=/api/coral/reef for live captures.') + '</span></div>';
+        return;
+      }
+      ui.captureList.innerHTML = captures.map((capture) => {
+        const href = escapeHtml(capture.url || '#');
+        const title = escapeHtml(capture.title || capture.domain || capture.url || 'Untitled capture');
+        const meta = escapeHtml([capture.domain, capture.tool, capture.captured_at?.slice(0, 10)].filter(Boolean).join(' · '));
+        return '<a href="' + href + '" target="_blank" rel="noreferrer"><strong>' + title + '</strong><span>' + meta + '</span></a>';
+      }).join('');
+    }
+
+    function updateCards() {
+      document.querySelectorAll('.dna-card').forEach((button) => {
+        const id = button.dataset.focus;
+        button.classList.toggle('is-active', id === selectedId || id === hoveredId);
+      });
+      labels.forEach((label, id) => label.classList.toggle('is-active', id === selectedId || id === hoveredId));
+    }
+
+    function moveSelectionRing(colony) {
+      const group = colonyGroups.get(colony.id);
+      if (!group || !selectionRing) return;
+      selectionRing.visible = true;
+      selectionRing.position.set(group.position.x, -0.58, group.position.z);
+      const scale = colony.id === 'news' ? 1.4 : colony.id === 'docs' ? 1.6 : 1.1;
+      selectionRing.scale.set(scale, 0.16, scale * 0.76);
+    }
+
+    function focusColony(id) {
+      const group = colonyGroups.get(id);
+      if (!group) return;
+      const target = group.position.clone().add(new THREE.Vector3(0, 0.55, 0));
+      const offset = new THREE.Vector3(0.35, 1.25, 3.45);
+      if (id === 'news') offset.set(0.1, 1.18, 3.65);
+      if (id === 'docs') offset.set(-0.4, 1.0, 3.4);
+      if (id === 'filings') offset.set(0.3, 1.0, 3.05);
+      if (id === 'social') offset.set(-0.2, 0.92, 3.0);
+      cameraGoal = { target, position: target.clone().add(offset) };
+    }
+
+    function fitReef() {
+      cameraGoal = { target: new THREE.Vector3(0, 0.15, 0.55), position: new THREE.Vector3(0.2, 3.1, 8.9) };
+      showToast('Showing the whole reef wall. Use DNA lens to reveal colony labels.');
+    }
+
+    function runSearch() {
+      const q = queryInput.value.trim().toLowerCase();
+      if (!q) {
+        showToast('Type a content family such as stock, news, filings, docs, or social.');
+        return;
+      }
+      const match = colonies.find((colony) => {
+        const captureText = (colony.recent_captures || [])
+          .map((capture) => [capture.title, capture.domain, capture.url, capture.query, capture.topic, capture.text_preview].join(' '))
+          .join(' ');
+        const dataTerms = [
+          ...(colony.top_domains || []).map((entry) => entry.domain),
+          ...(colony.top_terms || []).map((entry) => entry.term),
+          ...(colony.topic_samples || []).map((entry) => entry.topic),
+        ];
+        const haystack = [colony.id, colony.label, colony.content, colony.dna, ...(colony.tags || []), ...dataTerms, captureText].join(' ').toLowerCase();
+        return haystack.includes(q);
+      });
+      if (!match) {
+        showToast('No colony DNA matched "' + q + '". This is where semantic grouping would map into growth.');
+        return;
+      }
+      selectColony(match.id, { focus: true });
+      flashColony(match.id);
+    }
+
+    async function loadReefModel() {
+      const embedded = document.querySelector('#coral-reef-data')?.textContent?.trim();
+      if (embedded) {
+        try {
+          return { ...JSON.parse(embedded), source: 'embedded reef data' };
+        } catch (error) {
+          showToast('Embedded reef data was not valid JSON.');
+        }
+      }
+
+      const params = new URLSearchParams(location.search);
+      const api = params.get('api') || (location.protocol === 'file:' ? '' : '/api/coral/reef');
+      if (!api) return null;
+
+      try {
+        const response = await fetch(api, { headers: { accept: 'application/json' } });
+        if (!response.ok) throw new Error(response.status + ' ' + response.statusText);
+        return { ...(await response.json()), source: 'live reef api' };
+      } catch (error) {
+        showToast('Using static fallback reef: ' + error.message);
+        return null;
+      }
+    }
+
+    function normalizeLoadedColony(colony, index) {
+      const fallback = fallbackColonies[index % fallbackColonies.length];
+      return {
+        ...fallback,
+        ...colony,
+        id: colony.id || fallback.id,
+        label: colony.label || fallback.label,
+        content: colony.content || fallback.content,
+        dna: colony.dna || fallback.dna,
+        morphology: colony.morphology || fallback.morphology || morphologyForId(fallback.id),
+        color: colony.color || fallback.color,
+        swatch: colony.swatch || fallback.swatch,
+        position: Array.isArray(colony.position) ? colony.position : fallback.position,
+        captures: colony.captures ?? fallback.captures,
+        sources: colony.sources ?? fallback.sources,
+        tags: colony.tags || fallback.tags || [],
+      };
+    }
+
+    function updateSourceStatus() {
+      const node = document.querySelector('[data-source-status]');
+      if (!node) return;
+      if (!reefModel) {
+        node.textContent = 'Static fallback reef';
+        return;
+      }
+      const stats = reefModel.stats || {};
+      node.textContent = (reefModel.source || 'reef data') + ' · ' + (stats.capture_count || 0) + ' captures · ' + (stats.source_count || 0) + ' sources · ' + (stats.colony_count || colonies.length) + ' colonies';
+    }
+
+    function morphologyForId(id) {
+      return {
+        stocks: 'branching',
+        news: 'fan',
+        docs: 'plate',
+        filings: 'brain',
+        social: 'anemone',
+      }[id] || 'plate';
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function hashText(value) {
+      let result = 2166136261;
+      const text = String(value ?? '');
+      for (let i = 0; i < text.length; i += 1) {
+        result ^= text.charCodeAt(i);
+        result = Math.imul(result, 16777619);
+      }
+      return result >>> 0;
+    }
+
+    function colorFromSeed(seed, saturation = 0.55, lightness = 0.62) {
+      const color = new THREE.Color();
+      color.setHSL((seed % 360) / 360, saturation, lightness);
+      return color.getHex();
+    }
+
+    function flashColony(id) {
+      const group = colonyGroups.get(id);
+      if (!group) return;
+      group.userData.flashUntil = clock.elapsedTime + 1.6;
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('is-visible');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('is-visible'), 2400);
+    }
+
+    function handleResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      const elapsed = clock.getElapsedTime();
+      const delta = clock.getDelta();
+
+      for (const item of animated) {
+        if (item.type === 'sway') {
+          item.group.rotation.z = Math.sin(elapsed * item.speed + item.phase) * item.amplitude;
+        }
+        if (item.type === 'pulseGroup') {
+          const selected = item.colonyId === selectedId;
+          const flash = item.group.userData.flashUntil && item.group.userData.flashUntil > elapsed;
+          const pulse = 1 + Math.sin(elapsed * 2.4 + item.phase) * (selected || flash ? 0.026 : 0.006);
+          item.group.scale.setScalar(pulse);
+        }
+        if (item.type === 'tentacle') {
+          item.mesh.rotation.z = Math.sin(elapsed * item.speed + item.phase) * item.amplitude;
+        }
+        if (item.type === 'glyphPulse') {
+          item.mesh.scale.setScalar(item.baseScale + Math.sin(elapsed * item.speed + item.phase) * 0.16);
+        }
+        if (item.type === 'selectionRing') {
+          item.mesh.material.opacity = 0.08 + Math.sin(elapsed * 2.6) * 0.035;
+        }
+        if (item.type === 'particles') {
+          const position = item.points.geometry.getAttribute('position');
+          const speeds = item.points.userData.speeds;
+          for (let i = 0; i < position.count; i += 1) {
+            let x = position.getX(i) + speeds[i] * delta;
+            let y = position.getY(i) + Math.sin(elapsed * 0.6 + i) * 0.0008;
+            if (x > 8) x = -8;
+            position.setXYZ(i, x, y, position.getZ(i));
+          }
+          position.needsUpdate = true;
+        }
+        if (item.type === 'fish') {
+          const data = item.group.userData;
+          item.group.position.x = data.base.x + Math.sin(elapsed * data.speed + data.phase) * data.radius;
+          item.group.position.y = data.base.y + Math.sin(elapsed * data.speed * 1.7 + data.phase) * 0.08;
+          item.group.rotation.y = Math.sin(elapsed * data.speed + data.phase) > 0 ? Math.PI : 0;
+        }
+      }
+
+      for (const object of pickables) {
+        if (!object.material || !('emissiveIntensity' in object.material)) continue;
+        const selected = object.userData.colonyId === selectedId;
+        const hovered = object.userData.colonyId === hoveredId;
+        if (object.userData.tip) object.material.emissiveIntensity = (selected || hovered ? 0.72 : 0.28) + Math.sin(elapsed * 3.4) * 0.08;
+      }
+
+      if (cameraGoal) {
+        camera.position.lerp(cameraGoal.position, 0.055);
+        controls.target.lerp(cameraGoal.target, 0.055);
+        if (camera.position.distanceTo(cameraGoal.position) < 0.04 && controls.target.distanceTo(cameraGoal.target) < 0.04) cameraGoal = null;
+      }
+
+      controls.update();
+      updateLabels();
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    function updateLabels() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const world = new THREE.Vector3();
+      const projected = new THREE.Vector3();
+      for (const colony of colonies) {
+        const group = colonyGroups.get(colony.id);
+        const label = labels.get(colony.id);
+        if (!group || !label) continue;
+        group.getWorldPosition(world);
+        world.y += colony.id === 'news' ? 1.9 : colony.id === 'docs' ? 1.1 : 1.35;
+        projected.copy(world).project(camera);
+        const x = (projected.x * 0.5 + 0.5) * width;
+        const y = (-projected.y * 0.5 + 0.5) * height;
+        const visible = projected.z > -1 && projected.z < 1;
+        label.style.transform = 'translate(' + x.toFixed(1) + 'px, ' + y.toFixed(1) + 'px) translate(-50%, -115%)';
+        label.style.display = visible ? 'block' : 'none';
+      }
+    }
+
+    function randomFor(seed) {
+      let value = 0x811c9dc5;
+      for (let i = 0; i < seed.length; i += 1) {
+        value ^= seed.charCodeAt(i);
+        value = Math.imul(value, 0x01000193);
+      }
+      return function next() {
+        value += 0x6d2b79f5;
+        let t = value;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+  </script>
+</body>
+</html>

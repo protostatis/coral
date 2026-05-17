@@ -1,4 +1,4 @@
-import { rm, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCoral, renderCoralDocument, renderCoralExplorerDocument } from "../src/index.js";
@@ -6,6 +6,7 @@ import { createCoral, renderCoralDocument, renderCoralExplorerDocument } from ".
 const here = dirname(fileURLToPath(import.meta.url));
 const outFile = join(here, "coral-ui-demo.html");
 const explorerOutFile = join(here, "coral-explorer-demo.html");
+const reefFidelityOutFile = join(here, "reef-fidelity-demo.html");
 const demoDir = join(here, ".coral-ui-demo");
 const coral = createCoral({ dir: demoDir, source: "searchagentsky-ui-demo" });
 
@@ -19,6 +20,7 @@ const priorResearch = await coral.search("AI chip stocks", { limit: 6, includeDu
 const captureFeed = await coral.getCaptureFeed({ includeDuplicates: true });
 const topicView = await coral.getTopicView(topic, { includeDuplicates: true });
 const graph = await coral.getGraph({ includeDuplicates: true, limit: 500 });
+const reef = await coral.getReef({ includeDuplicates: true, limit: 500 });
 const diff = await coral.compareRuns("r_stocks_yesterday", "r_stocks_today");
 const rows = await coral.shape(priorResearch, {
   columns: ["ticker", "move", "reason", "source"],
@@ -57,8 +59,19 @@ await writeFile(
   "utf8",
 );
 
+const reefTemplate = await readFile(join(here, "reef-fidelity-spike.html"), "utf8");
+await writeFile(
+  reefFidelityOutFile,
+  reefTemplate.replace(
+    '<script type="module">',
+    `<script id="coral-reef-data" type="application/json">${escapeScriptJson(reef)}</script>\n  <script type="module">`,
+  ),
+  "utf8",
+);
+
 console.log(`Wrote ${outFile}`);
 console.log(`Wrote ${explorerOutFile}`);
+console.log(`Wrote ${reefFidelityOutFile}`);
 console.log("Open that file in a browser to view the Coral UI demo.");
 
 async function seedDemoData() {
@@ -140,6 +153,53 @@ async function seedDemoData() {
       meta: { tool: "ddm", status: 200 },
     },
   ]);
+
+  await coral.appendCaptures([
+    {
+      url: "https://www.reuters.com/technology/ai-chip-demand-markets-demo",
+      title: "AI chip demand lifts semiconductor shares",
+      text: "News coverage says AI chip demand is shaping market attention, with investors comparing GPU suppliers and infrastructure bottlenecks.",
+      query: "latest ai chip market news",
+      topic: "AI infrastructure news",
+      run_id: secondRun.id,
+      answer_id: secondRun.answer_id,
+      captured_at: "2026-05-15T14:08:00Z",
+      meta: { tool: "get_text", status: 200 },
+    },
+    {
+      url: "https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners",
+      title: "GitHub Actions hosted runner docs",
+      text: "Documentation explains hosted runner machine types, limits, usage guidance, and reference details for CI workloads.",
+      query: "github actions hosted runner documentation limits",
+      topic: "Developer documentation",
+      run_id: secondRun.id,
+      answer_id: secondRun.answer_id,
+      captured_at: "2026-05-15T14:11:00Z",
+      meta: { tool: "ddm", status: 200 },
+    },
+    {
+      url: "https://www.sec.gov/Archives/edgar/data/demo/10-k.htm",
+      title: "Example annual report filing",
+      text: "The annual report filing discusses risk factors, revenue concentration, capital expenditure, and regulatory disclosures.",
+      query: "sec 10-k annual report ai infrastructure risk factors",
+      topic: "SEC filings",
+      run_id: secondRun.id,
+      answer_id: secondRun.answer_id,
+      captured_at: "2026-05-15T14:14:00Z",
+      meta: { tool: "navigate", status: 200 },
+    },
+    {
+      url: "https://www.reddit.com/r/investing/comments/demo_ai_chip_stocks/",
+      title: "Investor thread about AI chip stocks",
+      text: "A social discussion thread compares NVIDIA, AMD, Cerebras, valuation risk, and practical concerns from retail investors.",
+      query: "reddit ai chip stocks investor discussion",
+      topic: "Social investing discussion",
+      run_id: secondRun.id,
+      answer_id: secondRun.answer_id,
+      captured_at: "2026-05-15T14:17:00Z",
+      meta: { tool: "ddm", status: 200 },
+    },
+  ]);
 }
 
 function extractRows(capture) {
@@ -173,4 +233,8 @@ function dedupeRows(rows) {
     seen.add(key);
     return true;
   });
+}
+
+function escapeScriptJson(value) {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
 }
