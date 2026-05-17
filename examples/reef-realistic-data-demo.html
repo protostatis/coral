@@ -103,7 +103,7 @@
       z-index: 10;
       inset: 16px;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(292px, 380px);
+      grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto 1fr;
       gap: 16px;
       pointer-events: none;
@@ -154,12 +154,147 @@
     .intro .dna-list { grid-column: 1 / -1; }
 
     .inspector {
-      grid-column: 2;
-      grid-row: 1 / span 2;
-      align-self: start;
-      max-height: calc(100vh - 40px);
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      bottom: 16px;
+      display: grid;
+      grid-template-columns: 46px 0;
+      width: 46px;
+      min-width: 0;
+      overflow: hidden;
+      padding: 0;
+      transition: width 220ms ease, grid-template-columns 220ms ease, box-shadow 220ms ease;
+    }
+
+    .inspector.is-peeking {
+      grid-template-columns: 46px minmax(0, 250px);
+      width: 296px;
+    }
+
+    .inspector.is-expanded,
+    .inspector.is-pinned {
+      grid-template-columns: 46px minmax(0, 1fr);
+      width: min(66.666vw, calc(100vw - 32px));
+    }
+
+    .inspector-tab {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      justify-items: center;
+      width: 46px;
+      min-height: 100%;
+      border: 0;
+      border-right: 1px solid var(--line);
+      border-radius: 0;
+      color: var(--ink);
+      background: rgba(4, 45, 70, 0.34);
+      padding: 14px 0;
+      cursor: pointer;
+    }
+
+    .inspector-tab:hover,
+    .inspector.is-peeking .inspector-tab,
+    .inspector.is-expanded .inspector-tab,
+    .inspector.is-pinned .inspector-tab {
+      color: #061723;
+      background: linear-gradient(180deg, #c5f3ff, #73dfff);
+    }
+
+    .tab-title,
+    .tab-count {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+
+    .tab-title {
+      max-height: 56vh;
+      overflow: hidden;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .tab-count {
+      color: currentColor;
+      font-family: var(--mono);
+      font-size: 0.56rem;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      opacity: 0.72;
+      text-transform: uppercase;
+    }
+
+    .inspector-content {
+      min-width: 0;
       overflow: auto;
+      padding: 18px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(12px);
+      transition: opacity 160ms ease, transform 200ms ease;
+    }
+
+    .inspector.is-peeking .inspector-content,
+    .inspector.is-expanded .inspector-content,
+    .inspector.is-pinned .inspector-content {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+
+    .inspector.is-expanded .inspector-content,
+    .inspector.is-pinned .inspector-content {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.86fr) minmax(260px, 1.14fr);
+      gap: 12px 18px;
+      align-content: start;
       padding: 20px;
+    }
+
+    .inspector.is-expanded .inspector-actions,
+    .inspector.is-pinned .inspector-actions,
+    .inspector.is-expanded .inspector-content > h2,
+    .inspector.is-pinned .inspector-content > h2 {
+      grid-column: 1 / -1;
+    }
+
+    .drawer-main,
+    .drawer-evidence {
+      min-width: 0;
+    }
+
+    .drawer-evidence {
+      align-self: start;
+    }
+
+    .inspector-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .pin-button {
+      min-height: 28px;
+      padding: 0 9px;
+      font-size: 0.54rem;
+    }
+
+    .drawer-hint {
+      margin: 10px 0 0;
+      color: rgba(172, 220, 234, 0.72);
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
     .eyebrow {
@@ -333,7 +468,7 @@
 
     .species {
       display: inline-flex;
-      margin: 16px 0 10px;
+      margin: 12px 0 10px;
       border-radius: 999px;
       color: #091314;
       background: linear-gradient(135deg, var(--sand), #a9d4c8);
@@ -347,7 +482,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
-      margin-top: 18px;
+      margin-top: 14px;
     }
 
     .stat {
@@ -373,14 +508,20 @@
     }
 
     .inside-list,
-    .mapping,
+    .chip-list,
     .capture-list {
       display: grid;
       gap: 8px;
     }
 
+    .chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
     .inside-row,
-    .mapping div,
+    .evidence-chip,
     .capture-list a,
     .capture-list div {
       border: 1px solid var(--line);
@@ -395,8 +536,18 @@
       gap: 10px;
     }
 
+    .evidence-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
     .inside-row strong,
-    .mapping strong,
     .capture-list strong {
       display: block;
       color: var(--ink);
@@ -410,7 +561,6 @@
     .inside-row strong { color: var(--aqua); }
 
     .inside-row span,
-    .mapping span,
     .capture-list span {
       display: block;
       margin-top: 6px;
@@ -419,12 +569,198 @@
       line-height: 1.38;
     }
 
+    .evidence-reason {
+      margin: 12px 0 0;
+      border-left: 2px solid rgba(139, 232, 255, 0.5);
+      padding-left: 12px;
+      color: #cdeefa;
+      font-size: 0.9rem;
+      line-height: 1.48;
+    }
+
+    .provenance {
+      margin-top: 12px;
+      color: rgba(172, 220, 234, 0.68);
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
     .capture-list a {
       color: inherit;
       text-decoration: none;
     }
 
-    .capture-list a:hover { border-color: rgba(230, 221, 188, 0.5); }
+    .evidence-summary {
+      margin: 0 0 10px;
+      border: 1px solid rgba(190, 236, 255, 0.18);
+      border-radius: 16px;
+      color: rgba(226, 247, 255, 0.82);
+      background: rgba(2, 25, 42, 0.42);
+      padding: 11px 12px;
+      font-size: 0.82rem;
+      line-height: 1.42;
+    }
+
+    .capture-card {
+      position: relative;
+      display: grid !important;
+      grid-template-columns: 40px minmax(0, 1fr);
+      gap: 12px;
+      overflow: hidden;
+      border-color: rgba(176, 232, 255, 0.22) !important;
+      background:
+        linear-gradient(135deg, rgba(10, 75, 108, 0.68), rgba(4, 31, 52, 0.74)),
+        rgba(3, 31, 50, 0.72) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 18px 45px rgba(0, 24, 44, 0.22);
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+
+    .capture-card:hover {
+      border-color: rgba(197, 243, 255, 0.62) !important;
+      background:
+        linear-gradient(135deg, rgba(15, 94, 132, 0.76), rgba(5, 38, 64, 0.8)),
+        rgba(4, 42, 68, 0.78) !important;
+      transform: translateY(-1px);
+    }
+
+    .capture-index {
+      display: grid;
+      place-items: start center;
+      padding-top: 2px;
+      color: rgba(197, 243, 255, 0.92);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+    }
+
+    .capture-index span {
+      display: block;
+      margin: 0;
+      color: inherit;
+      font-size: inherit;
+      line-height: 1;
+    }
+
+    .capture-index::after {
+      content: '';
+      display: block;
+      width: 1px;
+      height: calc(100% - 26px);
+      min-height: 54px;
+      margin-top: 10px;
+      background: linear-gradient(180deg, rgba(139, 232, 255, 0.62), rgba(139, 232, 255, 0.04));
+    }
+
+    .capture-body {
+      min-width: 0;
+    }
+
+    .capture-kicker {
+      display: flex !important;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 0 0 9px !important;
+      color: rgba(172, 220, 234, 0.82) !important;
+      font-family: var(--mono);
+      font-size: 0.58rem !important;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      line-height: 1.2 !important;
+      text-transform: uppercase;
+    }
+
+    .capture-kicker span {
+      display: inline !important;
+      margin: 0 !important;
+      color: inherit !important;
+      font-size: inherit !important;
+      line-height: inherit !important;
+    }
+
+    .capture-title {
+      display: block;
+      color: var(--ink) !important;
+      font-family: var(--sans) !important;
+      font-size: 1.02rem !important;
+      font-weight: 800 !important;
+      letter-spacing: -0.02em !important;
+      line-height: 1.15;
+      text-transform: none !important;
+    }
+
+    .capture-context {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 10px;
+      margin-top: 12px;
+      border-top: 1px solid rgba(190, 236, 255, 0.12);
+      padding-top: 11px;
+    }
+
+    .capture-question,
+    .capture-snippet,
+    .capture-insight {
+      display: block;
+      margin: 0;
+      line-height: 1.42 !important;
+    }
+
+    .capture-question {
+      color: rgba(235, 251, 255, 0.76) !important;
+      font-size: 0.82rem !important;
+    }
+
+    .capture-snippet {
+      margin-top: 12px !important;
+      border-radius: 14px;
+      color: #e3f8ff !important;
+      background: rgba(0, 19, 34, 0.32);
+      padding: 11px 12px;
+      font-size: 0.86rem !important;
+    }
+
+    .capture-insight {
+      margin-top: 10px !important;
+      border-left: 2px solid rgba(139, 232, 255, 0.52);
+      color: rgba(209, 241, 250, 0.8) !important;
+      padding-left: 10px;
+      font-size: 0.78rem !important;
+    }
+
+    .capture-label {
+      display: inline !important;
+      margin: 0 7px 0 0 !important;
+      color: var(--aqua) !important;
+      font-family: var(--mono);
+      font-size: 0.58rem !important;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .capture-value {
+      display: block !important;
+      margin: 0 !important;
+      color: rgba(235, 251, 255, 0.82) !important;
+      font-size: 0.82rem !important;
+      line-height: 1.42 !important;
+    }
+
+    .inspector.is-expanded .capture-list,
+    .inspector.is-pinned .capture-list {
+      gap: 10px;
+    }
+
+    .inspector.is-expanded .capture-list a,
+    .inspector.is-expanded .capture-list div,
+    .inspector.is-pinned .capture-list a,
+    .inspector.is-pinned .capture-list div {
+      min-height: 76px;
+      padding: 13px 14px;
+    }
 
     .reef-label {
       position: absolute;
@@ -531,6 +867,24 @@
         grid-row: auto;
         max-height: none;
       }
+      .inspector {
+        position: relative;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        grid-template-columns: 1fr;
+        width: auto;
+      }
+      .inspector-tab { display: none; }
+      .inspector-content {
+        opacity: 1;
+        pointer-events: auto;
+        transform: none;
+      }
+      .inspector.is-expanded .inspector-content,
+      .inspector.is-pinned .inspector-content {
+        display: block;
+      }
     }
 
     @media (max-width: 640px) {
@@ -550,7 +904,6 @@
 
   <main class="hud">
     <section class="panel intro" aria-label="Reef controls">
-      <p class="eyebrow">Data-backed realism pass</p>
       <h1>Evidence reef with colony DNA.</h1>
       <div class="search-box">
         <input data-query type="search" placeholder="Try: housing, childcare, stocks, docs">
@@ -567,30 +920,43 @@
       <div class="dna-list" data-dna-list hidden></div>
     </section>
 
-    <aside class="panel inspector" aria-label="Selected colony details">
-      <p class="eyebrow">Selected colony</p>
-      <h2 data-title>Stocks reef head</h2>
-      <div class="species" data-dna>branching acropora</div>
-      <p data-copy>Market artifacts co-grow as branching evidence: ticker pages, movers, filings, and market commentary bud from nearby stalks.</p>
+    <aside class="panel inspector is-collapsed" aria-label="Evidence drawer" data-inspector>
+      <button class="inspector-tab" type="button" data-inspector-tab aria-expanded="false" aria-label="Open evidence drawer">
+        <span class="tab-title" data-tab-title>Stocks reef head</span>
+        <span class="tab-count" data-tab-count>78 captures</span>
+      </button>
+      <div class="inspector-content" data-inspector-content>
+        <div class="inspector-actions">
+          <p class="eyebrow">Evidence drawer</p>
+          <button class="pin-button" type="button" data-inspector-pin aria-pressed="false">Pin</button>
+        </div>
+        <h2 data-title>Stocks reef head</h2>
+        <div class="drawer-main">
+          <div class="species" data-dna>branching acropora</div>
+          <p class="evidence-reason" data-reason>Grouped by ticker, sector, and market-mover queries.</p>
 
-      <div class="stat-grid">
-        <div class="stat"><span>Captures</span><strong data-captures>78</strong></div>
-        <div class="stat"><span>Sources</span><strong data-sources>7</strong></div>
-        <div class="stat"><span>Growth</span><strong data-growth>Fresh</strong></div>
+          <div class="stat-grid">
+            <div class="stat"><span>Captures</span><strong data-captures>78</strong></div>
+            <div class="stat"><span>Sources</span><strong data-sources>7</strong></div>
+            <div class="stat"><span>Growth</span><strong data-growth>Fresh</strong></div>
+          </div>
+
+          <div class="section-title"><span>What people looked for</span><span>signals</span></div>
+          <div class="chip-list" data-signal-list></div>
+
+          <div class="section-title"><span>Source mix</span><span>domains</span></div>
+          <div class="chip-list" data-source-list></div>
+
+          <div class="provenance" data-provenance>5 captures via ddm</div>
+          <p class="drawer-hint">Hover a colony to peek. Click to pin. Esc closes.</p>
+        </div>
+
+        <div class="drawer-evidence">
+          <div class="section-title"><span>Fresh evidence</span><span>sampled pages</span></div>
+          <div class="evidence-summary" data-evidence-summary>Showing sampled raw captures from this colony.</div>
+          <div class="capture-list" data-capture-list></div>
+        </div>
       </div>
-
-      <div class="section-title"><span>What's inside</span><span>evidence trail</span></div>
-      <div class="inside-list" data-inside-list></div>
-
-      <div class="section-title"><span>Mapping rule</span><span>biology to UX</span></div>
-      <div class="mapping">
-        <div><strong>Similarity</strong><span data-similarity>Similar captures bud from nearby tissue instead of being linked with visible edges.</span></div>
-        <div><strong>Recency</strong><span data-recency>Fresh captures are pale growth tips; older evidence thickens the skeleton.</span></div>
-        <div><strong>Inspection</strong><span data-inspection>Individual pages appear at macro range as polyps, source patches, and raw links.</span></div>
-      </div>
-
-      <div class="section-title"><span>Recent artifacts</span><span>raw captures</span></div>
-      <div class="capture-list" data-capture-list></div>
     </aside>
 
   </main>
@@ -624,8 +990,8 @@
         top_terms: [{ term: 'trending stocks', count: 5 }, { term: 'AI chip demand', count: 3 }, { term: 'market movers', count: 2 }],
         tool_counts: [{ tool: 'ddm', count: 5 }],
         recent_captures: [
-          { title: 'Finviz Top Gainers', domain: 'finviz.com', tool: 'ddm', captured_at: '2026-05-15T14:01:00Z', url: 'https://finviz.com/screener.ashx?v=340&s=ta_topgainers' },
-          { title: 'NVIDIA Stock Quote', domain: 'finance.yahoo.com', tool: 'ddm', captured_at: '2026-05-15T14:03:00Z', url: 'https://finance.yahoo.com/quote/NVDA' }
+          { title: 'Finviz Top Gainers', domain: 'finviz.com', tool: 'ddm', captured_at: '2026-05-15T14:01:00Z', url: 'https://finviz.com/screener.ashx?v=340&s=ta_topgainers', query: 'what are the top trending stocks today and why are they moving?', topic: 'Trending stocks', text_preview: 'Top gainers include NVDA, Cerebras, POET, and ONDS. The captured page points to AI chip demand, IPO momentum, and short-term market attention.' },
+          { title: 'NVIDIA Stock Quote', domain: 'finance.yahoo.com', tool: 'ddm', captured_at: '2026-05-15T14:03:00Z', url: 'https://finance.yahoo.com/quote/NVDA', query: 'why is NVIDIA moving today?', topic: 'AI infrastructure stocks', text_preview: 'NVIDIA shares rose as investors continued buying AI infrastructure names and comparing GPU demand against valuation risk.' }
         ]
       },
       {
@@ -645,11 +1011,27 @@
         similarity: 'Shared entities and storylines form ribs in the same fan instead of separate topic nodes.',
         recency: 'Breaking stories brighten the outer rim where water current is strongest.',
         inspection: 'A selected rib can unfold into headline captures and source provenance.',
-        top_domains: [{ domain: 'reuters.com', count: 3 }, { domain: 'apnews.com', count: 2 }, { domain: 'bbc.com', count: 2 }],
+        top_domains: [
+          { domain: 'reuters.com', count: 11 },
+          { domain: 'apnews.com', count: 7 },
+          { domain: 'bbc.com', count: 6 },
+          { domain: 'bloomberg.com', count: 5 },
+          { domain: 'cnbc.com', count: 4 },
+          { domain: 'wsj.com', count: 4 },
+          { domain: 'nytimes.com', count: 4 },
+          { domain: 'theverge.com', count: 3 },
+          { domain: 'marketwatch.com', count: 3 },
+          { domain: 'ft.com', count: 3 },
+          { domain: 'semafor.com', count: 2 }
+        ],
         top_terms: [{ term: 'latest coverage', count: 5 }, { term: 'policy change', count: 3 }, { term: 'public response', count: 2 }],
         tool_counts: [{ tool: 'get_text', count: 4 }, { tool: 'ddm', count: 3 }],
         recent_captures: [
-          { title: 'AI chip demand lifts semiconductor shares', domain: 'reuters.com', tool: 'get_text', captured_at: '2026-05-15T14:08:00Z', url: 'https://www.reuters.com/technology/ai-chip-demand-markets-demo' }
+          { title: 'AI chip demand lifts semiconductor shares', domain: 'reuters.com', tool: 'get_text', captured_at: '2026-05-15T14:08:00Z', url: 'https://www.reuters.com/technology/ai-chip-demand-markets-demo', query: 'latest ai chip market news', topic: 'AI infrastructure news', text_preview: 'The article connects market attention to AI chip demand, supplier constraints, and investor comparisons across semiconductor infrastructure companies.' },
+          { title: 'Markets weigh policy shift and household costs', domain: 'apnews.com', tool: 'ddm', captured_at: '2026-05-15T14:10:00Z', url: 'https://apnews.com/article/demo-policy-household-costs', query: 'how are policy changes affecting household costs?', topic: 'Policy change', text_preview: 'The wire story grounds the policy change in household budgets, public response, and near-term uncertainty rather than only market reaction.' },
+          { title: 'Public response builds around affordability package', domain: 'bbc.com', tool: 'get_text', captured_at: '2026-05-15T14:12:00Z', url: 'https://www.bbc.com/news/demo-affordability-response', query: 'public response to affordability policy package', topic: 'Public response', text_preview: 'Coverage compares official claims with public reaction, regional pressure, and examples from families weighing rent, childcare, and transport costs.' },
+          { title: 'Investors track supply constraints in AI infrastructure', domain: 'bloomberg.com', tool: 'ddm', captured_at: '2026-05-15T14:15:00Z', url: 'https://www.bloomberg.com/news/articles/demo-ai-infrastructure-supply', query: 'ai infrastructure supply constraints latest coverage', topic: 'AI infrastructure news', text_preview: 'The captured article adds supplier and capital-expenditure context, separating durable infrastructure demand from short-lived headline momentum.' },
+          { title: 'Policy debate pushes consumer stocks into focus', domain: 'cnbc.com', tool: 'get_text', captured_at: '2026-05-15T14:18:00Z', url: 'https://www.cnbc.com/demo-policy-consumer-stocks.html', query: 'policy change public response consumer stocks', topic: 'Market reaction', text_preview: 'The page links policy headlines to consumer names, analyst expectations, and practical questions about whether lower household costs change spending behavior.' }
         ]
       },
       {
@@ -673,7 +1055,7 @@
         top_terms: [{ term: 'runner limits', count: 2 }, { term: 'API reference', count: 2 }],
         tool_counts: [{ tool: 'ddm', count: 4 }],
         recent_captures: [
-          { title: 'GitHub Actions hosted runner docs', domain: 'docs.github.com', tool: 'ddm', captured_at: '2026-05-15T14:11:00Z', url: 'https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners' }
+          { title: 'GitHub Actions hosted runner docs', domain: 'docs.github.com', tool: 'ddm', captured_at: '2026-05-15T14:11:00Z', url: 'https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners', query: 'github actions hosted runner documentation limits', topic: 'Developer documentation', text_preview: 'The documentation explains runner machine types, usage limits, platform details, and practical CI constraints that developers need before choosing an execution environment.' }
         ]
       },
       {
@@ -697,7 +1079,7 @@
         top_terms: [{ term: 'annual report', count: 2 }, { term: 'risk factors', count: 2 }],
         tool_counts: [{ tool: 'navigate', count: 3 }],
         recent_captures: [
-          { title: 'Example annual report filing', domain: 'sec.gov', tool: 'navigate', captured_at: '2026-05-15T14:14:00Z', url: 'https://www.sec.gov/Archives/edgar/data/demo/10-k.htm' }
+          { title: 'Example annual report filing', domain: 'sec.gov', tool: 'navigate', captured_at: '2026-05-15T14:14:00Z', url: 'https://www.sec.gov/Archives/edgar/data/demo/10-k.htm', query: 'sec 10-k annual report ai infrastructure risk factors', topic: 'SEC filings', text_preview: 'The annual report capture highlights risk factors, revenue concentration, capital expenditure, regulatory disclosures, and durable evidence for market research.' }
         ]
       },
       {
@@ -721,7 +1103,7 @@
         top_terms: [{ term: 'discussion', count: 6 }, { term: 'practical concerns', count: 3 }],
         tool_counts: [{ tool: 'ddm', count: 6 }],
         recent_captures: [
-          { title: 'Investor thread about AI chip stocks', domain: 'reddit.com', tool: 'ddm', captured_at: '2026-05-15T14:17:00Z', url: 'https://www.reddit.com/r/investing/comments/demo_ai_chip_stocks/' }
+          { title: 'Investor thread about AI chip stocks', domain: 'reddit.com', tool: 'ddm', captured_at: '2026-05-15T14:17:00Z', url: 'https://www.reddit.com/r/investing/comments/demo_ai_chip_stocks/', query: 'reddit ai chip stocks investor discussion', topic: 'Social investing discussion', text_preview: 'Retail investors compare NVIDIA, AMD, Cerebras, valuation risk, and practical concerns. The thread captures recurring human questions, not just a source URL.' }
         ]
       },
       {
@@ -745,8 +1127,8 @@
         top_terms: [{ term: 'rent increase', count: 2 }, { term: 'commute tradeoff', count: 2 }, { term: 'lease renewal', count: 1 }],
         tool_counts: [{ tool: 'ddm', count: 1 }, { tool: 'get_text', count: 1 }],
         recent_captures: [
-          { title: 'Families compare rent, commute, and school tradeoffs', domain: 'housing.example.org', tool: 'ddm', captured_at: '2026-05-15T15:02:00Z', url: 'https://housing.example.org/rent-vs-commute-family-budget' },
-          { title: 'Lease renewal checklist for rising housing costs', domain: 'tenant-help.example.net', tool: 'get_text', captured_at: '2026-05-15T15:05:00Z', url: 'https://tenant-help.example.net/lease-renewal-costs' }
+          { title: 'Families compare rent, commute, and school tradeoffs', domain: 'housing.example.org', tool: 'ddm', captured_at: '2026-05-15T15:02:00Z', url: 'https://housing.example.org/rent-vs-commute-family-budget', query: 'how families decide between cheaper rent and longer commute', topic: 'Housing affordability', text_preview: 'People compare rent increases, commute time, school quality, and family budget pressure before deciding whether to move or stay.' },
+          { title: 'Lease renewal checklist for rising housing costs', domain: 'tenant-help.example.net', tool: 'get_text', captured_at: '2026-05-15T15:05:00Z', url: 'https://tenant-help.example.net/lease-renewal-costs', query: 'what to check before accepting a lease renewal rent increase', topic: 'Housing affordability', text_preview: 'A tenant checklist explains how households document rent hikes, utility changes, maintenance issues, negotiation options, and affordability pressure.' }
         ]
       },
       {
@@ -770,8 +1152,8 @@
         top_terms: [{ term: 'waitlist cost', count: 2 }, { term: 'after-school care', count: 1 }],
         tool_counts: [{ tool: 'ddm', count: 1 }, { tool: 'navigate', count: 1 }],
         recent_captures: [
-          { title: 'Childcare waitlist and cost planning worksheet', domain: 'childcare.example.org', tool: 'ddm', captured_at: '2026-05-15T15:08:00Z', url: 'https://childcare.example.org/waitlist-cost-calculator' },
-          { title: 'After-school care options and budget pressure', domain: 'family-budget.example.com', tool: 'navigate', captured_at: '2026-05-15T15:11:00Z', url: 'https://family-budget.example.com/after-school-care-options' }
+          { title: 'Childcare waitlist and cost planning worksheet', domain: 'childcare.example.org', tool: 'ddm', captured_at: '2026-05-15T15:08:00Z', url: 'https://childcare.example.org/waitlist-cost-calculator', query: 'childcare waitlist cost planning for working parents', topic: 'Childcare cost planning', text_preview: 'Parents compare daycare waitlists, deposits, commute windows, sick-day policies, and monthly childcare cost ranges.' },
+          { title: 'After-school care options and budget pressure', domain: 'family-budget.example.com', tool: 'navigate', captured_at: '2026-05-15T15:11:00Z', url: 'https://family-budget.example.com/after-school-care-options', query: 'compare after school care options and work schedule constraints', topic: 'Childcare cost planning', text_preview: 'Families compare after-school programs, flexible work schedules, pickup constraints, backup care, and budget tradeoffs.' }
         ]
       }
     ];
@@ -780,25 +1162,33 @@
     const labelLayer = document.querySelector('[data-label-layer]');
     const dnaList = document.querySelector('[data-dna-list]');
     const queryInput = document.querySelector('[data-query]');
+    const inspector = document.querySelector('[data-inspector]');
     const toast = document.querySelector('[data-toast]');
     const ui = {
       title: document.querySelector('[data-title]'),
       dna: document.querySelector('[data-dna]'),
-      copy: document.querySelector('[data-copy]'),
+      reason: document.querySelector('[data-reason]'),
       captures: document.querySelector('[data-captures]'),
       sources: document.querySelector('[data-sources]'),
       growth: document.querySelector('[data-growth]'),
-      insideList: document.querySelector('[data-inside-list]'),
-      similarity: document.querySelector('[data-similarity]'),
-      recency: document.querySelector('[data-recency]'),
-      inspection: document.querySelector('[data-inspection]'),
-      captureList: document.querySelector('[data-capture-list]')
+      signalList: document.querySelector('[data-signal-list]'),
+      sourceList: document.querySelector('[data-source-list]'),
+      evidenceSummary: document.querySelector('[data-evidence-summary]'),
+      captureList: document.querySelector('[data-capture-list]'),
+      provenance: document.querySelector('[data-provenance]'),
+      tabTitle: document.querySelector('[data-tab-title]'),
+      tabCount: document.querySelector('[data-tab-count]'),
+      tab: document.querySelector('[data-inspector-tab]'),
+      pin: document.querySelector('[data-inspector-pin]')
     };
 
     let colonies = fallbackColonies;
     let reefModel = null;
     let selectedId = colonies[0].id;
     let hoveredId = '';
+    let drawerColonyId = selectedId;
+    let inspectorPinned = false;
+    let inspectorCloseTimer = 0;
     let cameraGoal = null;
     let fishVisible = true;
     let waterVisible = true;
@@ -874,7 +1264,7 @@
         button.dataset.focus = colony.id;
         button.style.setProperty('--swatch', colony.swatch);
         button.innerHTML = '<span class="swatch"></span><span><strong>' + escapeHtml(colony.content) + '</strong><span>' + escapeHtml(colony.dna) + '</span><em>' + colony.captures + ' captures across ' + colony.sources + ' sources</em></span>';
-        button.addEventListener('click', () => selectColony(colony.id, { focus: true }));
+        button.addEventListener('click', () => selectColony(colony.id, { focus: true, pin: true }));
         dnaList.appendChild(button);
 
         const label = document.createElement('div');
@@ -892,10 +1282,25 @@
       document.querySelector('[data-lens]').addEventListener('click', toggleLens);
       document.querySelector('[data-water]').addEventListener('click', toggleWater);
       document.querySelector('[data-fish]').addEventListener('click', toggleFish);
+      ui.tab.addEventListener('click', () => {
+        if (inspectorPinned) {
+          collapseInspector({ unpin: true });
+          return;
+        }
+        pinInspector(drawerColonyId || selectedId);
+      });
+      ui.pin.addEventListener('click', () => {
+        if (inspectorPinned) collapseInspector({ unpin: true });
+        else pinInspector(drawerColonyId || selectedId);
+      });
+      inspector.addEventListener('mouseenter', () => clearTimeout(inspectorCloseTimer));
+      inspector.addEventListener('mouseleave', scheduleInspectorCollapse);
       renderer.domElement.addEventListener('pointerdown', () => document.body.classList.add('is-dragging'));
       window.addEventListener('pointerup', () => document.body.classList.remove('is-dragging'));
       renderer.domElement.addEventListener('pointermove', handlePointerMove);
+      renderer.domElement.addEventListener('pointerleave', handlePointerLeave);
       renderer.domElement.addEventListener('click', handleClick);
+      window.addEventListener('keydown', handleKeyDown);
       window.addEventListener('resize', handleResize);
     }
 
@@ -924,8 +1329,16 @@
 
         addSourcePatches(group, colony);
         addCaptureGlyphs(group, colony, morphology);
-        group.scale.setScalar(0.84 + Math.min(0.48, Math.sqrt(Math.max(1, colony.captures)) / 24));
+        const visualScale = colony.visual_scale ?? visualScaleForColony(colony);
+        group.scale.setScalar((0.84 + Math.min(0.48, Math.sqrt(Math.max(1, colony.captures)) / 24)) * visualScale);
       }
+    }
+
+    function visualScaleForColony(colony) {
+      const id = String(colony.id || '').toLowerCase();
+      const content = String(colony.content || '').toLowerCase();
+      if (id === 'docs' || content === 'docs') return 0.58;
+      return 1;
     }
 
     function addLights() {
@@ -1362,14 +1775,29 @@
     }
 
     function handlePointerMove(event) {
-      hoveredId = pick(event);
+      const id = pick(event);
+      if (id && id !== hoveredId && !inspectorPinned) peekInspector(id);
+      if (!id && hoveredId && !inspectorPinned) scheduleInspectorCollapse();
+      hoveredId = id;
       document.body.classList.toggle('is-picking', Boolean(hoveredId));
       updateCards();
     }
 
+    function handlePointerLeave() {
+      hoveredId = '';
+      document.body.classList.remove('is-picking');
+      updateCards();
+      scheduleInspectorCollapse();
+    }
+
     function handleClick(event) {
       const id = pick(event);
-      if (id) selectColony(id, { focus: true });
+      if (id) selectColony(id, { focus: true, pin: true });
+    }
+
+    function handleKeyDown(event) {
+      if (event.key !== 'Escape') return;
+      collapseInspector({ unpin: true });
     }
 
     function pick(event) {
@@ -1385,51 +1813,180 @@
       const colony = colonies.find((item) => item.id === id);
       if (!colony) return;
       selectedId = id;
+      renderInspector(colony);
+      if (options.pin) pinInspector(id);
       ui.title.textContent = colony.label;
       ui.dna.textContent = colony.dna;
-      ui.copy.textContent = colony.copy;
       ui.captures.textContent = String(colony.captures);
       ui.sources.textContent = String(colony.sources);
       ui.growth.textContent = colony.growth;
-      renderInsideList(colony);
-      ui.similarity.textContent = colony.similarity;
-      ui.recency.textContent = colony.recency;
-      ui.inspection.textContent = colony.inspection;
-      renderCaptureList(colony);
       updateCards();
       moveSelectionDisk(colony);
       if (options.focus) focusColony(id);
       if (!options.silent) showToast(colony.content + ' selected. The inspector shows the evidence inside this growth.');
     }
 
-    function renderInsideList(colony) {
-      const domains = summarizeEntries(colony.top_domains, 'domain') || (colony.sources + ' source sites');
-      const topics = summarizeEntries(colony.topic_samples, 'topic') || summarizeEntries(colony.top_terms, 'term') || 'captured query/title terms';
-      const tools = summarizeEntries(colony.tool_counts, 'tool') || 'capture tools';
-      ui.insideList.innerHTML = [
-        ['sources', domains],
-        ['signals', topics],
-        ['tools', tools]
-      ].map(([label, value]) => '<div class="inside-row"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(value) + '</span></div>').join('');
+    function peekInspector(id) {
+      if (inspectorPinned) return;
+      const colony = colonies.find((item) => item.id === id);
+      if (!colony) return;
+      clearTimeout(inspectorCloseTimer);
+      renderInspector(colony);
+      setInspectorState('peeking');
+    }
+
+    function pinInspector(id) {
+      const colony = colonies.find((item) => item.id === id);
+      if (!colony) return;
+      clearTimeout(inspectorCloseTimer);
+      inspectorPinned = true;
+      selectedId = id;
+      renderInspector(colony);
+      updateCards();
+      moveSelectionDisk(colony);
+      setInspectorState('expanded');
+    }
+
+    function scheduleInspectorCollapse() {
+      clearTimeout(inspectorCloseTimer);
+      if (inspectorPinned) return;
+      inspectorCloseTimer = setTimeout(() => collapseInspector(), 260);
+    }
+
+    function collapseInspector(options = {}) {
+      if (options.unpin) inspectorPinned = false;
+      if (inspectorPinned) return;
+      setInspectorState('collapsed');
+      const colony = colonies.find((item) => item.id === selectedId);
+      if (colony) renderInspector(colony);
+    }
+
+    function setInspectorState(state) {
+      inspector.classList.toggle('is-collapsed', state === 'collapsed');
+      inspector.classList.toggle('is-peeking', state === 'peeking');
+      inspector.classList.toggle('is-expanded', state === 'expanded');
+      inspector.classList.toggle('is-pinned', inspectorPinned);
+      ui.tab.setAttribute('aria-expanded', String(state !== 'collapsed'));
+      ui.tab.setAttribute('aria-label', inspectorPinned ? 'Close evidence drawer' : state === 'collapsed' ? 'Open evidence drawer' : 'Pin evidence drawer');
+      ui.pin.setAttribute('aria-pressed', String(inspectorPinned));
+      ui.pin.textContent = inspectorPinned ? 'Close' : 'Pin';
+    }
+
+    function renderInspector(colony) {
+      drawerColonyId = colony.id;
+      ui.title.textContent = colony.label;
+      ui.dna.textContent = colony.dna;
+      ui.reason.textContent = evidenceReason(colony);
+      ui.captures.textContent = String(colony.captures);
+      ui.sources.textContent = String(colony.sources);
+      ui.growth.textContent = colony.growth;
+      ui.tabTitle.textContent = colony.label;
+      ui.tabCount.textContent = colony.captures + ' captures';
+      renderChipList(ui.signalList, colony.topic_samples?.length ? colony.topic_samples : colony.top_terms, colony.topic_samples?.length ? 'topic' : 'term', 'captured terms');
+      renderSourceList(colony);
+      renderCaptureList(colony);
+      renderProvenance(colony);
+    }
+
+    function evidenceReason(colony) {
+      const terms = (colony.topic_samples?.length ? colony.topic_samples.map((entry) => entry.topic) : (colony.top_terms || []).map((entry) => entry.term))
+        .filter(Boolean)
+        .slice(0, 3);
+      const domains = (colony.top_domains || []).map((entry) => entry.domain).filter(Boolean).slice(0, 2);
+      if (terms.length && domains.length) return 'Grouped around ' + phraseList(terms) + ' across ' + phraseList(domains) + '.';
+      if (terms.length) return 'Grouped around ' + phraseList(terms) + '.';
+      return colony.copy || 'Grouped from captures that share query, source, topic, and recency signals.';
+    }
+
+    function renderChipList(node, entries = [], key, fallback) {
+      const chips = entries
+        .slice(0, 6)
+        .map((entry) => ({ label: String(entry[key] || '').trim(), count: entry.count || entry.score || 0 }))
+        .filter((entry) => entry.label);
+      if (!chips.length) {
+        node.innerHTML = '<span class="evidence-chip">' + escapeHtml(fallback) + '</span>';
+        return;
+      }
+      node.innerHTML = chips.map((entry) => '<span class="evidence-chip">' + escapeHtml(entry.label + (entry.count ? ' x' + entry.count : '')) + '</span>').join('');
+    }
+
+    function renderSourceList(colony) {
+      const entries = colony.top_domains || [];
+      const visibleEntries = entries.slice(0, 6);
+      const chips = entries
+        .slice(0, 6)
+        .map((entry) => ({ label: String(entry.domain || '').trim(), count: entry.count || 0 }))
+        .filter((entry) => entry.label);
+      const hiddenSources = Math.max(0, (colony.sources || 0) - visibleEntries.length);
+      const visibleCaptures = visibleEntries.reduce((total, entry) => total + (entry.count || 0), 0);
+      const hiddenCaptures = Math.max(0, (colony.captures || 0) - visibleCaptures);
+      if (hiddenSources) chips.push({ label: hiddenSources + ' more source sites', count: 0 });
+      if (hiddenCaptures) chips.push({ label: hiddenCaptures + ' captures in remaining sources', count: 0 });
+      ui.sourceList.innerHTML = chips.length
+        ? chips.map((entry) => '<span class="evidence-chip">' + escapeHtml(entry.label + (entry.count ? ' x' + entry.count : '')) + '</span>').join('')
+        : '<span class="evidence-chip">' + escapeHtml(colony.sources + ' source sites') + '</span>';
     }
 
     function renderCaptureList(colony) {
-      const captures = (colony.recent_captures || []).slice(0, 5);
+      const captures = (colony.recent_captures || []).slice(0, 8);
+      const shown = captures.length;
+      const sampledSources = new Set(captures.map((capture) => capture.domain).filter(Boolean)).size;
+      const hidden = Math.max(0, (colony.captures || 0) - shown);
+      ui.evidenceSummary.textContent = shown
+        ? 'Showing ' + shown + ' sampled page' + (shown === 1 ? '' : 's') + ' across ' + sampledSources + ' of ' + (colony.sources || sampledSources) + ' source site' + ((colony.sources || sampledSources) === 1 ? '' : 's') + ' from ' + (colony.captures || shown) + ' total captures. ' + (hidden ? 'The source mix accounts for the remaining ' + hidden + ' captures.' : 'This is the full recent capture set for this colony.')
+        : 'No raw capture samples are bundled here; connect live reef data to inspect individual pages.';
       if (!captures.length) {
         const domains = (colony.top_domains || []).slice(0, 4).map((entry) => entry.domain + ' x' + entry.count).join(' · ');
-        ui.captureList.innerHTML = '<div><strong>Source texture</strong><span>' + escapeHtml(domains || 'Static visual sample; connect ?api=/api/coral/reef for live captures.') + '</span></div>';
+        ui.captureList.innerHTML = '<div><strong>No raw captures in fallback</strong><span>' + escapeHtml(domains || 'Connect ?api=/api/coral/reef for live captures.') + '</span></div>';
         return;
       }
-      ui.captureList.innerHTML = captures.map((capture) => {
+      ui.captureList.innerHTML = captures.map((capture, index) => {
         const href = escapeHtml(capture.url || '#');
         const title = escapeHtml(capture.title || capture.domain || capture.url || 'Untitled capture');
-        const meta = escapeHtml([capture.domain, capture.tool, capture.captured_at?.slice(0, 10)].filter(Boolean).join(' · '));
-        return '<a href="' + href + '" target="_blank" rel="noreferrer"><strong>' + title + '</strong><span>' + meta + '</span></a>';
+        const source = escapeHtml([capture.domain, formatDate(capture.captured_at)].filter(Boolean).join(' · '));
+        const tool = escapeHtml(capture.tool || 'capture');
+        const topic = escapeHtml(capture.topic || colony.content || 'captured evidence');
+        const query = escapeHtml(capture.query || 'Captured while exploring this colony.');
+        const snippet = escapeHtml(capture.text_preview || capture.summary || capture.title || 'No text preview was captured for this artifact.');
+        const insight = escapeHtml(captureInsight(capture, colony));
+        return '<a class="capture-card" href="' + href + '" target="_blank" rel="noreferrer">'
+          + '<span class="capture-index"><span>' + String(index + 1).padStart(2, '0') + '</span></span>'
+          + '<div class="capture-body">'
+          + '<span class="capture-kicker"><span>' + source + '</span><span>' + tool + '</span><span>' + topic + '</span></span>'
+          + '<strong class="capture-title">' + title + '</strong>'
+          + '<div class="capture-context"><span class="capture-label">Question</span><span class="capture-value">' + query + '</span></div>'
+          + '<div class="capture-snippet">' + snippet + '</div>'
+          + '<div class="capture-insight"><span class="capture-label">Why kept</span> ' + insight + '</div>'
+          + '</div>'
+          + '</a>';
       }).join('');
     }
 
-    function summarizeEntries(entries = [], key) {
-      return entries.slice(0, 4).map((entry) => String(entry[key] || '').trim() + (entry.count ? ' x' + entry.count : '')).filter(Boolean).join(' · ');
+    function captureInsight(capture, colony) {
+      const topic = capture.topic || colony.content;
+      const terms = (colony.topic_samples?.length ? colony.topic_samples.map((entry) => entry.topic) : (colony.top_terms || []).map((entry) => entry.term))
+        .filter(Boolean)
+        .slice(0, 2);
+      if (capture.text_preview && terms.length) return 'This page contributes concrete context for ' + phraseList(terms) + ', not just another source link.';
+      if (capture.query) return 'This preserves the user question that led to the page, so the capture keeps intent attached to provenance.';
+      return 'This capture adds source provenance to the ' + topic + ' colony.';
+    }
+
+    function renderProvenance(colony) {
+      const tools = (colony.tool_counts || []).slice(0, 3).map((entry) => String(entry.tool || '').trim() + (entry.count ? ' x' + entry.count : '')).filter(Boolean);
+      ui.provenance.textContent = tools.length ? tools.join(' · ') : 'Capture provenance available from live reef data';
+    }
+
+    function phraseList(items) {
+      if (items.length < 3) return items.join(' and ');
+      return items.slice(0, -1).join(', ') + ', and ' + items.at(-1);
+    }
+
+    function formatDate(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     }
 
     function updateCards() {
@@ -1446,7 +2003,8 @@
       selectionDisk.visible = true;
       selectionDisk.position.set(group.position.x, -0.97, group.position.z);
       const scale = 0.78 + Math.min(0.8, Math.sqrt(Math.max(1, colony.captures)) / 18);
-      selectionDisk.scale.set(scale * 1.25, scale * 0.86, 1);
+      const visualScale = colony.visual_scale ?? visualScaleForColony(colony);
+      selectionDisk.scale.set(scale * visualScale * 1.25, scale * visualScale * 0.86, 1);
     }
 
     function focusColony(id) {
@@ -1508,7 +2066,7 @@
         showToast('No colony DNA matched "' + q + '". This is where read-time grouping would add new growth.');
         return;
       }
-      selectColony(match.id, { focus: true });
+      selectColony(match.id, { focus: true, pin: true });
       flashColony(match.id);
     }
 
@@ -1552,6 +2110,7 @@
         position: Array.isArray(colony.position) ? colony.position : fallback.position,
         captures: colony.captures ?? fallback.captures,
         sources: colony.sources ?? fallback.sources,
+        visual_scale: colony.visual_scale ?? fallback.visual_scale,
         growth: colony.growth || fallback.growth,
         tags: colony.tags || fallback.tags || [],
         copy: colony.copy || fallback.copy,
