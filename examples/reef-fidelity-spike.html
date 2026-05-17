@@ -363,6 +363,37 @@
       line-height: 1;
     }
 
+    .inside-list {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0 16px;
+    }
+
+    .inside-row {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(0, 12, 18, 0.24);
+    }
+
+    .inside-row strong {
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .inside-row span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.35;
+    }
+
     .mapping {
       display: grid;
       gap: 10px;
@@ -596,7 +627,7 @@
     <section class="panel command-panel" aria-label="Coral fidelity controls">
       <p class="eyebrow">Fidelity spike</p>
       <h1>Colony DNA before graph UI.</h1>
-      <p class="lede">This prototype hides the graph and renders human-driven artifacts as grouped growth. Similar captures share morphology, cluster together, and reveal details only when you dive close.</p>
+      <p class="lede">This prototype hides the graph and renders human-driven artifacts as grouped growth. Click a DNA card to inspect the raw captures, source domains, and recurring problem terms inside that colony.</p>
 
       <p class="eyebrow" data-source-status>Static fallback reef</p>
 
@@ -625,6 +656,9 @@
         <div class="stat"><span>Sources</span><strong data-stat-sources>7</strong></div>
         <div class="stat"><span>Growth</span><strong data-stat-growth>Fast</strong></div>
       </div>
+
+      <div class="section-title"><span>What's inside</span><span>read-time evidence</span></div>
+      <div class="inside-list" data-inside-list></div>
 
       <div class="section-title"><span>Mapping rule</span><span>biology to UX</span></div>
       <div class="mapping">
@@ -772,6 +806,7 @@
       captures: document.querySelector('[data-stat-captures]'),
       sources: document.querySelector('[data-stat-sources]'),
       growth: document.querySelector('[data-stat-growth]'),
+      insideList: document.querySelector('[data-inside-list]'),
       similarity: document.querySelector('[data-map-similarity]'),
       recency: document.querySelector('[data-map-recency]'),
       inspection: document.querySelector('[data-map-inspection]'),
@@ -1345,6 +1380,7 @@
       ui.captures.textContent = String(colony.captures);
       ui.sources.textContent = String(colony.sources);
       ui.growth.textContent = colony.growth;
+      renderInsideList(colony);
       ui.similarity.textContent = colony.similarity;
       ui.recency.textContent = colony.recency;
       ui.inspection.textContent = colony.inspection;
@@ -1368,6 +1404,25 @@
         const meta = escapeHtml([capture.domain, capture.tool, capture.captured_at?.slice(0, 10)].filter(Boolean).join(' · '));
         return '<a href="' + href + '" target="_blank" rel="noreferrer"><strong>' + title + '</strong><span>' + meta + '</span></a>';
       }).join('');
+    }
+
+    function renderInsideList(colony) {
+      const domains = summarizeEntries(colony.top_domains, 'domain') || (colony.sources + ' source sites');
+      const topics = summarizeEntries(colony.topic_samples, 'topic') || summarizeEntries(colony.top_terms, 'term') || 'captured query/title terms';
+      const tools = summarizeEntries(colony.tool_counts, 'tool') || 'capture tools';
+      ui.insideList.innerHTML = [
+        ['sources', domains],
+        ['signals', topics],
+        ['tools', tools],
+      ].map(([label, value]) => '<div class="inside-row"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(value) + '</span></div>').join('');
+    }
+
+    function summarizeEntries(entries = [], key) {
+      return entries
+        .slice(0, 4)
+        .map((entry) => String(entry[key] || '').trim() + (entry.count ? ' x' + entry.count : ''))
+        .filter(Boolean)
+        .join(' · ');
     }
 
     function updateCards() {

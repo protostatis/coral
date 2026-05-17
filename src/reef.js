@@ -123,6 +123,7 @@ export function buildCoralReefModel(input = {}) {
 
 function classifyCapture(capture) {
   const haystack = captureHaystack(capture);
+  const tokenSet = new Set(tokenize(haystack));
   let winner = null;
   let winnerScore = 0;
 
@@ -130,11 +131,11 @@ function classifyCapture(capture) {
     let score = 0;
 
     for (const tag of definition.tags) {
-      if (haystack.includes(tag)) score += 2;
+      if (matchesTag(haystack, tokenSet, tag)) score += 2;
     }
 
     for (const domain of definition.domains) {
-      if (String(capture.domain ?? "").includes(domain) || String(capture.url ?? "").includes(domain)) score += 5;
+      if (matchesDomain(capture.domain, domain)) score += 5;
     }
 
     if (score > winnerScore) {
@@ -144,6 +145,19 @@ function classifyCapture(capture) {
   }
 
   return winnerScore > 0 ? winner : null;
+}
+
+function matchesTag(haystack, tokenSet, tag) {
+  const normalized = String(tag ?? "").toLowerCase();
+  if (!normalized) return false;
+  if (/^[a-z0-9._-]+$/.test(normalized)) return tokenSet.has(normalized);
+  return haystack.includes(normalized);
+}
+
+function matchesDomain(domain, expected) {
+  const actual = String(domain ?? "").toLowerCase().replace(/^www\./, "");
+  const normalizedExpected = String(expected ?? "").toLowerCase().replace(/^www\./, "");
+  return actual === normalizedExpected || actual.endsWith(`.${normalizedExpected}`);
 }
 
 function fallbackDefinition(capture) {
@@ -329,6 +343,10 @@ function positionForIndex(index) {
     [-3.5, -0.7, 1.85],
     [3.4, -0.72, 1.6],
     [0, -0.82, 2.2],
+    [-4.15, -0.9, 0.45],
+    [4.05, -0.92, 0.55],
+    [-2.2, -0.96, 2.55],
+    [2.24, -0.96, 2.52],
   ];
   return positions[index % positions.length];
 }

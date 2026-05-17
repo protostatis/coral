@@ -20,7 +20,7 @@ const priorResearch = await coral.search("AI chip stocks", { limit: 6, includeDu
 const captureFeed = await coral.getCaptureFeed({ includeDuplicates: true });
 const topicView = await coral.getTopicView(topic, { includeDuplicates: true });
 const graph = await coral.getGraph({ includeDuplicates: true, limit: 500 });
-const reef = await coral.getReef({ includeDuplicates: true, limit: 500 });
+const reef = await coral.getReef({ includeDuplicates: true, limit: 500, colonyLimit: 12 });
 const diff = await coral.compareRuns("r_stocks_yesterday", "r_stocks_today");
 const rows = await coral.shape(priorResearch, {
   columns: ["ticker", "move", "reason", "source"],
@@ -198,6 +198,128 @@ async function seedDemoData() {
       answer_id: secondRun.answer_id,
       captured_at: "2026-05-15T14:17:00Z",
       meta: { tool: "ddm", status: 200 },
+    },
+  ]);
+
+  const humanRun = await coral.appendRun({
+    id: "r_human_interests_today",
+    query: "what practical problems are people researching this week?",
+    topic: "Human interest problems",
+    started_at: "2026-05-15T15:00:00Z",
+    answer_id: "a_human_interests_today",
+    result_url: "https://searchagentsky.com/r/demo-human-interests",
+  });
+
+  await coral.appendCaptures([
+    {
+      url: "https://housing.example.org/rent-vs-commute-family-budget",
+      title: "Families compare rent, commute, and school tradeoffs",
+      text: "People compare rent increases, commute time, school quality, and family budget pressure before deciding whether to move or stay.",
+      query: "how families decide between cheaper rent and longer commute",
+      topic: "Housing affordability",
+      run_id: humanRun.id,
+      answer_id: humanRun.answer_id,
+      captured_at: "2026-05-15T15:02:00Z",
+      meta: { tool: "ddm", status: 200 },
+    },
+    {
+      url: "https://tenant-help.example.net/lease-renewal-costs",
+      title: "Lease renewal checklist for rising housing costs",
+      text: "A tenant checklist explains how households document rent hikes, utility changes, maintenance issues, and negotiation options.",
+      query: "what to check before accepting a lease renewal rent increase",
+      topic: "Housing affordability",
+      run_id: humanRun.id,
+      answer_id: humanRun.answer_id,
+      captured_at: "2026-05-15T15:05:00Z",
+      meta: { tool: "get_text", status: 200 },
+    },
+    {
+      url: "https://childcare.example.org/waitlist-cost-calculator",
+      title: "Childcare waitlist and cost planning worksheet",
+      text: "Parents compare daycare waitlists, deposits, commute windows, sick-day policies, and monthly childcare cost ranges.",
+      query: "childcare waitlist cost planning for working parents",
+      topic: "Childcare cost planning",
+      run_id: humanRun.id,
+      answer_id: humanRun.answer_id,
+      captured_at: "2026-05-15T15:08:00Z",
+      meta: { tool: "ddm", status: 200 },
+    },
+    {
+      url: "https://family-budget.example.com/after-school-care-options",
+      title: "After-school care options and budget pressure",
+      text: "Families compare after-school programs, flexible work schedules, transport pickup constraints, and backup care when budgets are tight.",
+      query: "compare after school care options and work schedule constraints",
+      topic: "Childcare cost planning",
+      run_id: humanRun.id,
+      answer_id: humanRun.answer_id,
+      captured_at: "2026-05-15T15:11:00Z",
+      meta: { tool: "navigate", status: 200 },
+    },
+    {
+      url: "https://care-access.example.org/glp1-appeal-steps",
+      title: "GLP-1 insurance appeal steps",
+      text: "Patients compare prior authorization steps, appeal letters, shortages, copay cards, and clinician notes for diabetes and weight-care medication access.",
+      query: "how patients appeal insurance denial for glp-1 diabetes medication",
+      topic: "Diabetes care access",
+      run_id: humanRun.id,
+      answer_id: humanRun.answer_id,
+      captured_at: "2026-05-15T15:14:00Z",
+      meta: { tool: "ddm", status: 200 },
+    },
+    {
+      url: "https://clinic-notes.example.net/medication-shortage-planning",
+      title: "Medication shortage planning questions",
+      text: "A patient planning page lists pharmacy call scripts, refill timing, substitution questions, and records to bring to appointments.",
+      query: "what questions to ask doctor during medication shortage",
+      topic: "Diabetes care access",
+      run_id: humanRun.id,
+      answer_id: humanRun.answer_id,
+      captured_at: "2026-05-15T15:17:00Z",
+      meta: { tool: "get_text", status: 200 },
+    },
+    {
+      url: "https://heat-adaptation.example.gov/apartment-cooling-checklist",
+      title: "Apartment cooling checklist during extreme heat",
+      text: "Residents compare window shading, fans, cooling centers, medication safety, elderly neighbors, pets, and landlord repair requests during heat waves.",
+      query: "how apartment renters prepare for heat wave without central air",
+      topic: "Climate heat adaptation",
+      run_id: humanRun.id,
+      answer_id: humanRun.answer_id,
+      captured_at: "2026-05-15T15:20:00Z",
+      meta: { tool: "ddm", status: 200 },
+    },
+    {
+      url: "https://mutual-aid.example.org/heat-check-ins",
+      title: "Neighborhood heat check-in plan",
+      text: "Neighbors coordinate check-ins, cooling rides, water access, emergency contacts, and building hallway temperature notes.",
+      query: "neighborhood heat wave check in plan for vulnerable neighbors",
+      topic: "Climate heat adaptation",
+      run_id: humanRun.id,
+      answer_id: humanRun.answer_id,
+      captured_at: "2026-05-15T15:23:00Z",
+      meta: { tool: "ddm", status: 200 },
+    },
+    {
+      url: "https://repair.example.com/washing-machine-drain-pump",
+      title: "Washing machine drain pump troubleshooting",
+      text: "A repair walkthrough compares symptoms, part numbers, tool costs, safety steps, and when a household should call a technician.",
+      query: "fix washing machine not draining compare repair cost part number",
+      topic: "Right-to-repair troubleshooting",
+      run_id: humanRun.id,
+      answer_id: humanRun.answer_id,
+      captured_at: "2026-05-15T15:26:00Z",
+      meta: { tool: "ddm", status: 200 },
+    },
+    {
+      url: "https://parts.example.net/appliance-repair-decision-tree",
+      title: "Appliance repair decision tree",
+      text: "Households compare replacement cost, repair time, warranty status, part availability, and skill level before attempting a repair.",
+      query: "should I repair or replace appliance decision tree parts availability",
+      topic: "Right-to-repair troubleshooting",
+      run_id: humanRun.id,
+      answer_id: humanRun.answer_id,
+      captured_at: "2026-05-15T15:29:00Z",
+      meta: { tool: "get_text", status: 200 },
     },
   ]);
 }
