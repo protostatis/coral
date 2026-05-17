@@ -109,6 +109,7 @@ const reef = await coral.getReef({ answer_id: answerId });
 ```
 
 `getReef()` does not add write-time classification. It maps existing capture fields into temporary colony DNA only when rendering or querying the reef.
+The model includes capped render hints such as `capture_glyphs`, `source_bands`, and `timeline_bands`; these are derived from existing fields like domain, query, topic, tool, run, answer, timestamp, and text length, never from new write-time extraction.
 
 To power "what changed?" between two runs:
 

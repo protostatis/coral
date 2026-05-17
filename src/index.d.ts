@@ -256,6 +256,25 @@ export interface CoralReefCapturePreview {
   text_preview: string;
 }
 
+export interface CoralReefCaptureGlyph {
+  id: string;
+  title: string;
+  url: string;
+  domain: string;
+  captured_at: string;
+  query: string;
+  topic: string;
+  tool: string;
+  run_id: string;
+  answer_id: string;
+  text_length: number;
+  duplicate_of: string;
+  recency_score: number;
+  seed: number;
+  size: number;
+  position: [number, number, number];
+}
+
 export interface CoralReefColony {
   id: string;
   label: string;
@@ -280,6 +299,9 @@ export interface CoralReefColony {
   top_terms: Array<{ term: string; score: number }>;
   tool_counts: Array<{ tool: string; count: number; last_captured_at: string }>;
   topic_samples: Array<{ topic: string; count: number; last_captured_at: string }>;
+  source_bands: Array<{ domain: string; count: number; weight: number; seed: number }>;
+  timeline_bands: Array<{ date: string; count: number; weight: number; seed: number }>;
+  capture_glyphs: CoralReefCaptureGlyph[];
   recent_captures: CoralReefCapturePreview[];
 }
 

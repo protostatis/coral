@@ -202,6 +202,19 @@ function buildColony(definition, captures, index) {
     top_terms: terms,
     tool_counts: tools,
     topic_samples: topics,
+    source_bands: domains.map((entry, index) => ({
+      domain: entry.domain,
+      count: entry.count,
+      weight: entry.count / sorted.length,
+      seed: hash(`${definition.id}:domain:${entry.domain}:${index}`),
+    })),
+    timeline_bands: groupBy(sorted, (capture) => capture.captured_at.slice(0, 10), "date", 8).map((entry, index) => ({
+      date: entry.date,
+      count: entry.count,
+      weight: entry.count / sorted.length,
+      seed: hash(`${definition.id}:date:${entry.date}:${index}`),
+    })),
+    capture_glyphs: sorted.slice(0, 48).map((capture, index) => buildCaptureGlyph(definition, capture, index, sorted)),
     recent_captures: sorted.slice(0, 8).map((capture) => ({
       id: capture.id,
       title: capture.title || capture.domain || capture.url || "Untitled capture",
@@ -213,6 +226,40 @@ function buildColony(definition, captures, index) {
       tool: capture.meta?.tool || capture.meta?.extraction_tool || "capture",
       text_preview: snippet(capture.text, 220),
     })),
+  };
+}
+
+function buildCaptureGlyph(definition, capture, index, captures) {
+  const capturedAt = Date.parse(capture.captured_at);
+  const newest = Date.parse(captures[0]?.captured_at ?? capture.captured_at);
+  const oldest = Date.parse(captures.at(-1)?.captured_at ?? capture.captured_at);
+  const span = Math.max(1, newest - oldest);
+  const recency = Number.isFinite(capturedAt) ? 1 - Math.max(0, Math.min(1, (newest - capturedAt) / span)) : 0;
+  const seed = hash(`${definition.id}:${capture.id}:${index}`);
+  const radius = 0.18 + ((seed >>> 3) % 1000) / 1000 * 0.82;
+  const theta = ((seed >>> 13) % 1000) / 1000 * Math.PI * 2;
+
+  return {
+    id: capture.id,
+    title: capture.title || capture.domain || capture.url || "Untitled capture",
+    url: capture.url,
+    domain: capture.domain,
+    captured_at: capture.captured_at,
+    query: capture.query,
+    topic: capture.topic,
+    tool: capture.meta?.tool || capture.meta?.extraction_tool || "capture",
+    run_id: capture.run_id,
+    answer_id: capture.answer_id,
+    text_length: capture.text?.length ?? 0,
+    duplicate_of: capture.duplicate_of,
+    recency_score: Number(recency.toFixed(4)),
+    seed,
+    size: Number((0.028 + Math.min(0.055, Math.log10(Math.max(10, capture.text?.length ?? 10)) * 0.012)).toFixed(4)),
+    position: [
+      Number((Math.cos(theta) * radius).toFixed(4)),
+      Number((0.12 + recency * 1.18 + (index % 7) * 0.018).toFixed(4)),
+      Number((Math.sin(theta) * radius * 0.72).toFixed(4)),
+    ],
   };
 }
 

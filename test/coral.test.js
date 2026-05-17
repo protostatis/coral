@@ -201,6 +201,9 @@ describe("coral", () => {
     assert.ok(reef.colonies.some((colony) => colony.id === "stocks" && colony.morphology === "branching"));
     assert.ok(reef.colonies.some((colony) => colony.id === "news" && colony.morphology === "fan"));
     assert.ok(reef.colonies.every((colony) => colony.recent_captures.every((capture) => !Object.hasOwn(capture, "text"))));
+    assert.ok(reef.colonies.every((colony) => colony.capture_glyphs.every((glyph) => !Object.hasOwn(glyph, "text"))));
+    assert.ok(reef.colonies.some((colony) => colony.capture_glyphs.some((glyph) => glyph.text_length > 0 && glyph.recency_score >= 0)));
+    assert.ok(reef.colonies.some((colony) => colony.source_bands.length > 0));
   });
 
   it("can build fallback reef colonies without write-time classification", () => {
