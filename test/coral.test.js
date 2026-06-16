@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
-import { buildCoralGraph, buildCoralReefModel, canonicalizeUrl, createCoral, renderCoralDocument, renderCoralExplorerDocument } from "../src/index.js";
+import { buildCoralGraph, buildCoralReefModel, canonicalizeUrl, createCoral, renderCoralDashboardDocument, renderCoralDocument, renderCoralExplorerDocument, renderCoralReefDocument } from "../src/index.js";
 
 let dir;
 let coral;
@@ -276,8 +276,49 @@ describe("coral", () => {
     );
   });
 
-  it("renders the Coral visualization shell", () => {
-    const html = renderCoralDocument({
+  it("renders the Coral WebGL reef shell by default", () => {
+    const reef = buildCoralReefModel({
+      captures: [
+        {
+          id: "c_webgl",
+          url: "https://finviz.com/screener.ashx?v=340&s=ta_topgainers",
+          canonical_url: "https://finviz.com/screener.ashx?s=ta_topgainers&v=340",
+          domain: "finviz.com",
+          title: "Finviz Top Gainers",
+          text: "NVDA stock market movers and AI chip demand",
+          query: "trending stocks",
+          topic: "Stocks",
+          captured_at: "2026-05-15T10:00:00Z",
+          run_id: "r_1",
+          session_id: "",
+          answer_id: "",
+          source: "test",
+          content_hash: "h1",
+          text_hash: "h2",
+          duplicate_of: "",
+          meta: { tool: "ddm" },
+        },
+      ],
+    });
+    const html = renderCoralDocument(reef, { title: "Coral WebGL", api: "/custom/coral/reef" });
+
+    assert.match(html, /Coral WebGL/);
+    assert.match(html, /id="reef-root"/);
+    assert.match(html, /three@0\.160\.0/);
+    assert.match(html, /"colonies":/);
+    assert.match(html, /params\.get\('api'\) \|\| "\/custom\/coral\/reef"/);
+  });
+
+  it("renders the Coral reef document export", () => {
+    const html = renderCoralReefDocument({ api: "/api/coral/reef" });
+
+    assert.match(html, /Evidence reef with colony DNA/);
+    assert.match(html, /id="coral-reef-data" type="application\/json"><\/script>/);
+    assert.match(html, /params\.get\('api'\) \|\| "\/api\/coral\/reef"/);
+  });
+
+  it("renders the legacy Coral dashboard shell", () => {
+    const html = renderCoralDashboardDocument({
       title: "Coral UI",
       topic: "Trending Stocks",
       topicView: {

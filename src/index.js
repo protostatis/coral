@@ -17,7 +17,8 @@ import { buildCaptureFeed, buildTopicView, compareCaptureSets } from "./views.js
 export { buildCoralExplorerModel, coralExplorerCss, coralExplorerScript, renderCoralExplorer, renderCoralExplorerDocument } from "./explorer.js";
 export { buildCoralGraph } from "./graph.js";
 export { buildCoralReefModel } from "./reef.js";
-export { buildCoralUiModel, coralUiCss, coralUiScript, renderCoralDashboard, renderCoralDocument } from "./ui.js";
+export { buildCoralUiModel, coralUiCss, coralUiScript, renderCoralDashboard, renderCoralDashboardDocument, renderCoralDocument } from "./ui.js";
+export { renderCoralReefDocument } from "./webgl.js";
 
 export class Coral {
   constructor(options = {}) {

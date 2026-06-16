@@ -127,7 +127,7 @@ app.get("/api/coral/reef", async (req, res) => {
 });
 ```
 
-Then open the realistic reef demo against live data with `examples/reef-realistic-data-demo.html?api=/api/coral/reef`.
+Then render the WebGL reef route with `renderCoralDocument()` or open the standalone demo against live data with `examples/reef-realistic-data-demo.html?api=/api/coral/reef`.
 
 To power "what changed?" between two runs:
 
@@ -294,15 +294,17 @@ Before answering a question, the agent checks coral: "Have I seen pages about th
 This is supported today with `coral.search(query, { limit })`; the product decision is when to inject prior captures into the answer prompt.
 
 ### Visualization layer
-Coral now ships a framework-light UI layer for the first product demo and Search Agent Sky embed:
+Coral now ships two framework-light UI layers for the Search Agent Sky embed:
 
-- `renderCoralDocument(model)` returns a complete standalone HTML page.
-- `renderCoralDashboard(model)` returns an embeddable dashboard fragment.
+- `renderCoralDocument(model)` returns the production WebGL reef page.
+- `renderCoralReefDocument(model)` returns the same WebGL reef page explicitly.
+- `renderCoralDashboardDocument(model)` returns the legacy capture dashboard page.
+- `renderCoralDashboard(model)` returns the legacy dashboard fragment.
 - `coralUiCss()` returns the visual system CSS.
 - `coralUiScript()` returns the tab interaction script.
 - `buildCoralUiModel(input)` normalizes capture-feed/topic/diff/search/table data for rendering.
 
-The UI direction is a page evidence cockpit: compact answer-page card, capture inspector, source coverage, capture timeline, prior research, optional run diff, and shaped table.
+The default UI direction is the underwater WebGL evidence reef: live captures grow into read-time colony DNA, with search, camera focus, source/capture chips, and an evidence drawer. The legacy dashboard remains available for a page evidence cockpit: capture inspector, source coverage, capture timeline, prior research, optional run diff, and shaped table.
 
 Open the standalone reef demo in a browser:
 
@@ -312,7 +314,24 @@ examples/reef-realistic-data-demo.html
 
 It can use static fallback data, embedded `#coral-reef-data` JSON, or `?api=/api/coral/reef` once a host app exposes `coral.getReef()`.
 
-Search Agent Sky can embed the server-rendered fragment like this:
+Search Agent Sky can render the live WebGL route like this:
+
+```js
+import { renderCoralDocument } from "@unchainedsky/coral";
+
+app.get("/coral", async (req, res) => {
+  const reef = await coral.getReef({ includeDuplicates: true, limit: 500 });
+  res.type("html").send(renderCoralDocument(reef, { api: "/api/coral/reef" }));
+});
+```
+
+Or use the bundled Express-style adapter from `examples/searchagentsky-producer.js`:
+
+```js
+registerCoralRoutes(app, { basePath: "/coral", reefApiPath: "/api/coral/reef" });
+```
+
+Search Agent Sky can still embed the legacy dashboard fragment like this:
 
 ```js
 import { renderCoralDashboard } from "@unchainedsky/coral";
