@@ -1,3 +1,5 @@
+import { renderCoralReefDocument } from "./webgl.js";
+
 const DEFAULT_TITLE = "Coral Evidence Reef";
 
 export function buildCoralUiModel(input = {}) {
@@ -51,6 +53,10 @@ export function buildCoralUiModel(input = {}) {
 }
 
 export function renderCoralDocument(input = {}, options = {}) {
+  return renderCoralReefDocument(input, options);
+}
+
+export function renderCoralDashboardDocument(input = {}, options = {}) {
   const model = buildCoralUiModel(input);
   const title = escapeHtml(options.title ?? model.title);
 

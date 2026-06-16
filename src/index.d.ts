@@ -321,6 +321,12 @@ export interface CoralReefModel {
   colonies: CoralReefColony[];
 }
 
+export interface CoralReefDocumentInput extends Partial<CoralReefModel> {
+  title?: string;
+  api?: string;
+  reef?: CoralReefModel;
+}
+
 export interface ShapeOptions<Row = unknown> {
   columns?: string[];
   hint?: string;
@@ -372,7 +378,9 @@ export function compareCaptureSets(leftCaptures?: Capture[], rightCaptures?: Cap
 export function buildCoralGraph(input?: { captures?: Capture[]; query?: string; limit?: number; termLimit?: number }): CoralGraph;
 export function buildCoralReefModel(input?: { captures?: Capture[]; query?: string; limit?: number; colonyLimit?: number }): CoralReefModel;
 export function buildCoralUiModel(input?: CoralUiModelInput): Record<string, unknown>;
-export function renderCoralDocument(input?: CoralUiModelInput, options?: { title?: string }): string;
+export function renderCoralDocument(input?: CoralReefDocumentInput | CoralUiModelInput, options?: { title?: string; api?: string }): string;
+export function renderCoralReefDocument(input?: CoralReefDocumentInput, options?: { title?: string; api?: string }): string;
+export function renderCoralDashboardDocument(input?: CoralUiModelInput, options?: { title?: string }): string;
 export function renderCoralDashboard(input?: CoralUiModelInput): string;
 export function coralUiCss(): string;
 export function coralUiScript(): string;

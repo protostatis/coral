@@ -1,4 +1,4 @@
-import { createCoral } from "@unchainedsky/coral";
+import { createCoral, renderCoralDocument, renderCoralExplorerDocument } from "@unchainedsky/coral";
 
 const coral = createCoral({
   dir: process.env.CORAL_DIR ?? ".coral",
@@ -48,6 +48,28 @@ export async function getAnswerCaptureFeed(answerId) {
 
 export async function getAnswerReef(answerId) {
   return coral.getReef({ answer_id: answerId, includeDuplicates: true });
+}
+
+export function registerCoralRoutes(app, { basePath = "/coral", reefApiPath = "/api/coral/reef", explorerPath = `${basePath}/explorer` } = {}) {
+  app.get(basePath, async (req, res) => {
+    try {
+      const reef = await coral.getReef(filtersFromQuery(req.query));
+      res.type("html").send(renderCoralDocument(reef, { title: "Coral Evidence Reef", api: reefApiPath }));
+    } catch (error) {
+      res.status(500).send(error.message || "failed to render coral reef");
+    }
+  });
+
+  app.get(explorerPath, async (req, res) => {
+    try {
+      const graph = await coral.getGraph(filtersFromQuery(req.query));
+      res.type("html").send(renderCoralExplorerDocument({ graph, backHref: basePath }));
+    } catch (error) {
+      res.status(500).send(error.message || "failed to render coral explorer");
+    }
+  });
+
+  registerCoralReefRoutes(app, { basePath: reefApiPath });
 }
 
 export function registerCoralReefRoutes(app, { basePath = "/api/coral/reef" } = {}) {
