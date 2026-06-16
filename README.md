@@ -306,6 +306,8 @@ Coral now ships two framework-light UI layers for the Search Agent Sky embed:
 
 The default UI direction is the underwater WebGL evidence reef: live captures grow into read-time colony DNA, with search, camera focus, source/capture chips, and an evidence drawer. The legacy dashboard remains available for a page evidence cockpit: capture inspector, source coverage, capture timeline, prior research, optional run diff, and shaped table.
 
+`renderCoralDocument()` intentionally points at the WebGL reef. Existing dashboard integrations should switch to `renderCoralDashboardDocument()` for a full HTML page or `renderCoralDashboard()` for an embeddable fragment.
+
 Open the standalone reef demo in a browser:
 
 ```text

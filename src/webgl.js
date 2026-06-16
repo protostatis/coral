@@ -6,8 +6,7 @@ const DEFAULT_REEF_API = "/api/coral/reef";
 const REEF_DATA_TAG = '<script id="coral-reef-data" type="application/json"></script>';
 const REEF_TITLE_PATTERN = /<title>.*?<\/title>/;
 const REEF_API_PATTERN = /params\.get\('api'\) \|\| \(location\.protocol === 'file:' \? '' : '[^']*'\)/;
-
-let cachedWebglDocument = "";
+const WEBGL_DOCUMENT = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../examples/reef-realistic-data-demo.html"), "utf8");
 
 export function renderCoralReefDocument(input = {}, options = {}) {
   const source = input ?? {};
@@ -16,22 +15,28 @@ export function renderCoralReefDocument(input = {}, options = {}) {
   const title = options.title ?? source.title ?? "Coral Evidence Reef";
   let html = webglDocument();
 
-  html = html.replace(REEF_TITLE_PATTERN, `<title>${escapeHtml(title)}</title>`);
-  html = html.replace(REEF_API_PATTERN, `params.get('api') || ${safeScriptString(api || "")}`);
+  html = replaceRequired(html, REEF_TITLE_PATTERN, `<title>${escapeHtml(title)}</title>`, "WebGL reef title");
+  html = replaceRequired(html, REEF_API_PATTERN, `params.get('api') || ${safeScriptString(api || "")}`, "WebGL reef API fallback");
 
   if (reef) {
-    html = html.replace(REEF_DATA_TAG, `<script id="coral-reef-data" type="application/json">${safeJson(reef)}</script>`);
+    html = replaceRequired(html, REEF_DATA_TAG, `<script id="coral-reef-data" type="application/json">${safeJson(reef)}</script>`, "WebGL reef embedded data");
   }
 
   return html;
 }
 
 function webglDocument() {
-  if (!cachedWebglDocument) {
-    cachedWebglDocument = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../examples/reef-realistic-data-demo.html"), "utf8");
+  return WEBGL_DOCUMENT;
+}
+
+function replaceRequired(html, search, replacement, label) {
+  const matched = typeof search === "string" ? html.includes(search) : search.test(html);
+
+  if (!matched) {
+    throw new Error(`${label} template marker was not found`);
   }
 
-  return cachedWebglDocument;
+  return html.replace(search, replacement);
 }
 
 function safeJson(value) {
