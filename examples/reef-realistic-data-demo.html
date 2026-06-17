@@ -892,6 +892,7 @@
         overflow-x: hidden;
         overflow-y: auto;
       }
+      html { scroll-behavior: smooth; }
       #reef-root,
       #reef-root canvas { min-height: 0; }
       #reef-root canvas { touch-action: pan-y; }
@@ -909,6 +910,10 @@
         overflow: visible;
         padding: clamp(420px, 68vh, 680px) 12px 24px;
         padding-top: clamp(420px, 68dvh, 680px);
+        padding-bottom: max(24px, env(safe-area-inset-bottom));
+      }
+      body.dna-lens .hud {
+        padding-bottom: calc(env(safe-area-inset-bottom) + clamp(260px, 36dvh, 380px));
       }
       .panel {
         max-width: 100%;
@@ -935,6 +940,7 @@
         width: 100%;
         max-width: 100%;
         max-height: none;
+        scroll-margin-top: 14px;
       }
       .inspector.is-collapsed { display: none; }
       .inspector.is-peeking,
@@ -1000,12 +1006,27 @@
         overflow: visible;
         margin-inline: 0;
         padding-bottom: 0;
+        scroll-margin-top: 14px;
+      }
+      .dna-list::before {
+        content: "Colony DNA · tap a card for evidence";
+        display: block;
+        margin: 2px 0 4px;
+        color: rgba(203, 230, 223, 0.74);
+        font-family: var(--mono);
+        font-size: 0.58rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
       }
       .dna-card {
         grid-template-columns: 30px minmax(0, 1fr);
         width: 100%;
         min-width: 0;
+        min-height: 64px;
         max-width: none;
+        border-radius: 18px;
+        padding: 10px;
       }
       .dna-card em { display: block; }
       .species {
