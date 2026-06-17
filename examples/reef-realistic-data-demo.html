@@ -1412,6 +1412,7 @@
     controls.minDistance = 3.1;
     controls.maxDistance = 12;
     controls.maxPolarAngle = Math.PI * 0.64;
+    controls.addEventListener('start', cancelCameraFocus);
     syncMobileCanvasTouchAction();
 
     const raycaster = new THREE.Raycaster();
@@ -1485,7 +1486,11 @@
       });
       inspector.addEventListener('mouseenter', () => clearTimeout(inspectorCloseTimer));
       inspector.addEventListener('mouseleave', scheduleInspectorCollapse);
-      renderer.domElement.addEventListener('pointerdown', () => document.body.classList.add('is-dragging'));
+      renderer.domElement.addEventListener('wheel', cancelCameraFocus, { passive: true });
+      renderer.domElement.addEventListener('pointerdown', () => {
+        cancelCameraFocus();
+        document.body.classList.add('is-dragging');
+      });
       window.addEventListener('pointerup', () => document.body.classList.remove('is-dragging'));
       renderer.domElement.addEventListener('pointermove', handlePointerMove);
       renderer.domElement.addEventListener('pointerleave', handlePointerLeave);
@@ -2207,6 +2212,10 @@
       if (id.includes('filings')) offset.set(-0.15, 0.78, 2.45);
       if (id.includes('social') || id.includes('childcare')) offset.set(0.12, 0.88, 2.55);
       cameraGoal = { target, position: target.clone().add(offset) };
+    }
+
+    function cancelCameraFocus() {
+      cameraGoal = null;
     }
 
     function isMobileLayout() {
