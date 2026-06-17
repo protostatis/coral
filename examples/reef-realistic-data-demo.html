@@ -282,7 +282,13 @@
       margin-bottom: 10px;
     }
 
+    .inspector-actions .eyebrow {
+      margin: 0;
+    }
+
     .pin-button {
+      flex: 0 0 auto;
+      min-width: 54px;
       min-height: 28px;
       padding: 0 9px;
       font-size: 0.54rem;
@@ -882,54 +888,84 @@
       html,
       body {
         min-height: 100%;
-        height: auto;
+        height: 100%;
         overflow-x: hidden;
-        overflow-y: auto;
+        overflow-y: hidden;
       }
       #reef-root,
-      #reef-root canvas { min-height: 840px; }
+      #reef-root canvas { min-height: 0; }
       .hud {
-        position: relative;
-        inset: auto;
+        position: fixed;
+        inset: 12px;
         grid-template-columns: 1fr;
-        width: 100%;
-        max-width: 100vw;
+        grid-template-rows: auto minmax(0, 1fr);
+        align-content: space-between;
+        width: auto;
+        max-width: none;
+        height: calc(100vh - 24px);
+        height: calc(100dvh - 24px);
         gap: 12px;
-        overflow-x: hidden;
-        padding: 12px;
+        overflow: visible;
+        padding: 0;
       }
       .panel {
         max-width: 100%;
         border-radius: 20px;
       }
       .intro {
+        grid-row: 1;
         width: 100%;
+        max-height: 38vh;
+        max-height: 38dvh;
+        overflow: auto;
         padding: 10px;
       }
-      .intro,
-      .inspector {
+      .intro {
         grid-column: 1;
-        grid-row: auto;
-        max-height: none;
       }
       .inspector {
         position: relative;
         top: auto;
         right: auto;
         bottom: auto;
+        display: none;
+        grid-column: 1;
+        grid-row: 2;
         grid-template-columns: 1fr;
+        align-self: end;
         width: 100%;
         max-width: 100%;
+        max-height: min(52vh, 420px);
+        max-height: min(52dvh, 420px);
+      }
+      .inspector.is-collapsed { display: none; }
+      .inspector.is-peeking,
+      .inspector.is-expanded,
+      .inspector.is-pinned {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
       }
       .inspector-tab { display: none; }
+      .pin-button[aria-pressed="false"] { display: none; }
+      .pin-button[aria-pressed="true"] {
+        display: inline-grid;
+        place-items: center;
+        min-width: 72px;
+        min-height: 34px;
+      }
       .inspector-content {
         width: 100%;
         max-width: 100%;
+        max-height: min(52vh, 420px);
+        max-height: min(52dvh, 420px);
+        overflow: auto;
         padding: 14px;
         opacity: 1;
         pointer-events: auto;
         transform: none;
       }
+      .inspector.is-peeking .inspector-content,
       .inspector.is-expanded .inspector-content,
       .inspector.is-pinned .inspector-content {
         display: block;
@@ -976,6 +1012,7 @@
       }
       .inspector-actions {
         align-items: flex-start;
+        margin-bottom: 12px;
       }
       .capture-card {
         grid-template-columns: 28px minmax(0, 1fr);
@@ -1006,7 +1043,11 @@
     }
 
     @media (max-width: 420px) {
-      .hud { padding: 10px; }
+      .hud {
+        inset: 10px;
+        height: calc(100vh - 20px);
+        height: calc(100dvh - 20px);
+      }
       .controls { grid-template-columns: 1fr 1fr; }
       .capture-card { grid-template-columns: 1fr; }
       .capture-index {

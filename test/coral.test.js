@@ -307,6 +307,9 @@ describe("coral", () => {
     assert.match(html, /three@0\.160\.0/);
     assert.match(html, /"colonies":/);
     assert.match(html, /overflow-wrap: anywhere/);
+    assert.match(html, /height: calc\(100dvh - 24px\)/);
+    assert.match(html, /\.inspector\.is-collapsed \{ display: none; \}/);
+    assert.match(html, /\.pin-button\[aria-pressed="false"\] \{ display: none; \}/);
     assert.match(html, /@media \(max-width: 420px\)/);
     assert.match(html, /params\.get\('api'\) \|\| "\/custom\/coral\/reef"/);
   });
