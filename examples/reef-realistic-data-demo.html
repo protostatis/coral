@@ -2213,7 +2213,7 @@
       event.currentTarget.setAttribute('aria-pressed', String(!pressed));
       dnaList.hidden = pressed;
       document.body.classList.toggle('dna-lens', !pressed);
-      if (!pressed) scrollMobileIntoView(dnaList, 'nearest');
+      if (!pressed) scrollMobileIntoView(dnaList);
     }
 
     function toggleWater(event) {
