@@ -361,8 +361,9 @@ describe("coral", () => {
     assert.match(html, /id="reef-root"/);
     assert.match(html, /three@0\.160\.0/);
     assert.match(html, /"colonies":/);
-    assert.match(html, /data-scroll>Scroll<\/button>/);
-    assert.doesNotMatch(html, /Fit reef/);
+    assert.doesNotMatch(html, /data-scroll/);
+    assert.doesNotMatch(html, /Fit reef|>Scroll<\/button>|scrollReef/);
+    assert.match(html, /data-lens aria-pressed="false">DNA lens<\/button>/);
     assert.match(html, /overflow-wrap: anywhere/);
     assert.match(html, /touch-action: pan-y/);
     assert.match(html, /padding-top: clamp\(420px, 68dvh, 680px\)/);

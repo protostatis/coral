@@ -996,7 +996,7 @@
       .search-box button { width: 100%; }
       .controls {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
       .controls button { width: 100%; }
       .dna-list {
@@ -1075,7 +1075,7 @@
         padding-top: clamp(380px, 68vh, 620px);
         padding-top: clamp(380px, 68dvh, 620px);
       }
-      .controls { grid-template-columns: 1fr 1fr; }
+      .controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .capture-card { grid-template-columns: 1fr; }
       .capture-index {
         display: flex;
@@ -1102,7 +1102,6 @@
       </div>
 
       <div class="controls">
-        <button type="button" data-scroll>Scroll</button>
         <button type="button" data-lens aria-pressed="false">DNA lens</button>
         <button type="button" data-water aria-pressed="true">Water</button>
         <button type="button" data-fish aria-pressed="true">Fish</button>
@@ -1470,7 +1469,6 @@
       queryInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') runSearch();
       });
-      document.querySelector('[data-scroll]').addEventListener('click', scrollReef);
       document.querySelector('[data-lens]').addEventListener('click', toggleLens);
       document.querySelector('[data-water]').addEventListener('click', toggleWater);
       document.querySelector('[data-fish]').addEventListener('click', toggleFish);
@@ -2209,12 +2207,6 @@
       if (id.includes('filings')) offset.set(-0.15, 0.78, 2.45);
       if (id.includes('social') || id.includes('childcare')) offset.set(0.12, 0.88, 2.55);
       cameraGoal = { target, position: target.clone().add(offset) };
-    }
-
-    function scrollReef() {
-      cameraGoal = { target: new THREE.Vector3(0, -0.18, 0.6), position: new THREE.Vector3(0.25, 2.75, 8.2) };
-      if (isMobileLayout()) window.scrollTo({ top: 0, behavior: 'smooth' });
-      showToast(isMobileLayout() ? 'Scroll the reef, DNA, and evidence as one page.' : 'Scroll to zoom the reef. Drag to orbit.');
     }
 
     function isMobileLayout() {
