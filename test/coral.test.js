@@ -306,6 +306,8 @@ describe("coral", () => {
     assert.match(html, /id="reef-root"/);
     assert.match(html, /three@0\.160\.0/);
     assert.match(html, /"colonies":/);
+    assert.match(html, /overflow-wrap: anywhere/);
+    assert.match(html, /@media \(max-width: 420px\)/);
     assert.match(html, /params\.get\('api'\) \|\| "\/custom\/coral\/reef"/);
   });
 

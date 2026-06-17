@@ -330,6 +330,26 @@
       line-height: 1.56;
     }
 
+    h1,
+    h2,
+    p,
+    .drawer-main,
+    .drawer-evidence,
+    .evidence-reason,
+    .evidence-summary,
+    .capture-card,
+    .capture-title,
+    .capture-value,
+    .capture-snippet,
+    .capture-insight,
+    .capture-kicker span,
+    .evidence-chip,
+    .inside-row,
+    .provenance {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
     .lede {
       display: none;
       margin: 18px 0 16px;
@@ -523,7 +543,9 @@
     .inside-row,
     .evidence-chip,
     .capture-list a,
-    .capture-list div {
+    .capture-list > div {
+      min-width: 0;
+      max-width: 100%;
       border: 1px solid var(--line);
       border-radius: 16px;
       background: rgba(5, 20, 24, 0.46);
@@ -608,6 +630,7 @@
       display: grid !important;
       grid-template-columns: 40px minmax(0, 1fr);
       gap: 12px;
+      max-width: 100%;
       overflow: hidden;
       border-color: rgba(176, 232, 255, 0.22) !important;
       background:
@@ -656,6 +679,7 @@
 
     .capture-body {
       min-width: 0;
+      max-width: 100%;
     }
 
     .capture-kicker {
@@ -674,6 +698,7 @@
 
     .capture-kicker span {
       display: inline !important;
+      max-width: 100%;
       margin: 0 !important;
       color: inherit !important;
       font-size: inherit !important;
@@ -695,6 +720,7 @@
       display: grid;
       grid-template-columns: 76px 1fr;
       gap: 10px;
+      min-width: 0;
       margin-top: 12px;
       border-top: 1px solid rgba(190, 236, 255, 0.12);
       padding-top: 11px;
@@ -743,6 +769,8 @@
 
     .capture-value {
       display: block !important;
+      min-width: 0;
+      max-width: 100%;
       margin: 0 !important;
       color: rgba(235, 251, 255, 0.82) !important;
       font-size: 0.82rem !important;
@@ -755,9 +783,9 @@
     }
 
     .inspector.is-expanded .capture-list a,
-    .inspector.is-expanded .capture-list div,
+    .inspector.is-expanded .capture-list > div,
     .inspector.is-pinned .capture-list a,
-    .inspector.is-pinned .capture-list div {
+    .inspector.is-pinned .capture-list > div {
       min-height: 76px;
       padding: 13px 14px;
     }
@@ -851,16 +879,33 @@
     }
 
     @media (max-width: 860px) {
-      body { overflow: auto; }
+      html,
+      body {
+        min-height: 100%;
+        height: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
       #reef-root,
       #reef-root canvas { min-height: 840px; }
       .hud {
         position: relative;
         inset: auto;
         grid-template-columns: 1fr;
-        padding: 16px;
+        width: 100%;
+        max-width: 100vw;
+        gap: 12px;
+        overflow-x: hidden;
+        padding: 12px;
       }
-      .intro { width: auto; }
+      .panel {
+        max-width: 100%;
+        border-radius: 20px;
+      }
+      .intro {
+        width: 100%;
+        padding: 10px;
+      }
       .intro,
       .inspector {
         grid-column: 1;
@@ -873,10 +918,14 @@
         right: auto;
         bottom: auto;
         grid-template-columns: 1fr;
-        width: auto;
+        width: 100%;
+        max-width: 100%;
       }
       .inspector-tab { display: none; }
       .inspector-content {
+        width: 100%;
+        max-width: 100%;
+        padding: 14px;
         opacity: 1;
         pointer-events: auto;
         transform: none;
@@ -891,7 +940,81 @@
       .search-box,
       .stat-grid,
       .inside-row { grid-template-columns: 1fr; }
-      h1 { font-size: 0.86rem; }
+      h1 { font-size: 0.78rem; }
+      h2 {
+        font-size: clamp(1.55rem, 9vw, 2.25rem);
+        line-height: 1;
+      }
+      button {
+        min-width: 0;
+        padding: 0 8px;
+        letter-spacing: 0.08em;
+      }
+      .search-box {
+        width: 100%;
+        max-width: none;
+      }
+      .search-box button { width: 100%; }
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .controls button { width: 100%; }
+      .dna-list {
+        margin-inline: -2px;
+        padding-bottom: 4px;
+      }
+      .dna-card {
+        min-width: 132px;
+        max-width: 78vw;
+      }
+      .species {
+        max-width: 100%;
+        border-radius: 16px;
+        white-space: normal;
+        line-height: 1.2;
+      }
+      .inspector-actions {
+        align-items: flex-start;
+      }
+      .capture-card {
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 8px;
+        border-radius: 14px !important;
+        padding: 11px !important;
+      }
+      .capture-index { font-size: 0.62rem; }
+      .capture-index::after { min-height: 36px; }
+      .capture-title { font-size: 0.92rem !important; }
+      .capture-context {
+        grid-template-columns: 1fr;
+        gap: 5px;
+      }
+      .capture-label {
+        display: block !important;
+        margin: 0 0 4px !important;
+      }
+      .capture-value,
+      .capture-snippet,
+      .capture-insight { font-size: 0.78rem !important; }
+      .capture-snippet { padding: 10px; }
+      .toast {
+        bottom: 12px;
+        max-width: calc(100vw - 24px);
+        border-radius: 18px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .hud { padding: 10px; }
+      .controls { grid-template-columns: 1fr 1fr; }
+      .capture-card { grid-template-columns: 1fr; }
+      .capture-index {
+        display: flex;
+        justify-content: flex-start;
+        padding-top: 0;
+      }
+      .capture-index::after { display: none; }
     }
   </style>
 </head>
