@@ -374,6 +374,8 @@ describe("coral", () => {
     assert.match(html, /scrollMobileIntoView/);
     assert.match(html, /scrollMobileIntoView\(dnaList\)/);
     assert.match(html, /syncMobileCanvasTouchAction/);
+    assert.match(html, /controls\.addEventListener\('start', cancelCameraFocus\)/);
+    assert.match(html, /addEventListener\('wheel', cancelCameraFocus, \{ passive: true \}\)/);
     assert.match(html, /\.inspector\.is-collapsed \{ display: none; \}/);
     assert.match(html, /\.pin-button\[aria-pressed="false"\] \{ display: none; \}/);
     assert.match(html, /@media \(max-width: 420px\)/);
