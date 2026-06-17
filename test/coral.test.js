@@ -309,6 +309,9 @@ describe("coral", () => {
     assert.match(html, /overflow-wrap: anywhere/);
     assert.match(html, /touch-action: pan-y/);
     assert.match(html, /padding-top: clamp\(420px, 68dvh, 680px\)/);
+    assert.match(html, /body\.dna-lens \.hud/);
+    assert.match(html, /Colony DNA · tap a card for evidence/);
+    assert.match(html, /scroll-margin-top: 14px/);
     assert.match(html, /\.dna-list \{\n\s+display: grid;/);
     assert.match(html, /scrollMobileIntoView/);
     assert.match(html, /scrollMobileIntoView\(dnaList\)/);
