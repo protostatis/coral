@@ -1102,7 +1102,7 @@
       </div>
 
       <div class="controls">
-        <button type="button" data-fit>Fit reef</button>
+        <button type="button" data-scroll>Scroll</button>
         <button type="button" data-lens aria-pressed="false">DNA lens</button>
         <button type="button" data-water aria-pressed="true">Water</button>
         <button type="button" data-fish aria-pressed="true">Fish</button>
@@ -1470,7 +1470,7 @@
       queryInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') runSearch();
       });
-      document.querySelector('[data-fit]').addEventListener('click', fitReef);
+      document.querySelector('[data-scroll]').addEventListener('click', scrollReef);
       document.querySelector('[data-lens]').addEventListener('click', toggleLens);
       document.querySelector('[data-water]').addEventListener('click', toggleWater);
       document.querySelector('[data-fish]').addEventListener('click', toggleFish);
@@ -2211,9 +2211,10 @@
       cameraGoal = { target, position: target.clone().add(offset) };
     }
 
-    function fitReef() {
+    function scrollReef() {
       cameraGoal = { target: new THREE.Vector3(0, -0.18, 0.6), position: new THREE.Vector3(0.25, 2.75, 8.2) };
-      showToast('Showing the whole reef wall. Use DNA lens to reveal colony labels.');
+      if (isMobileLayout()) window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast(isMobileLayout() ? 'Scroll the reef, DNA, and evidence as one page.' : 'Scroll to zoom the reef. Drag to orbit.');
     }
 
     function isMobileLayout() {
