@@ -307,7 +307,11 @@ describe("coral", () => {
     assert.match(html, /three@0\.160\.0/);
     assert.match(html, /"colonies":/);
     assert.match(html, /overflow-wrap: anywhere/);
-    assert.match(html, /height: calc\(100dvh - 24px\)/);
+    assert.match(html, /touch-action: pan-y/);
+    assert.match(html, /padding-top: clamp\(420px, 68dvh, 680px\)/);
+    assert.match(html, /\.dna-list \{\n\s+display: grid;/);
+    assert.match(html, /scrollMobileIntoView/);
+    assert.match(html, /syncMobileCanvasTouchAction/);
     assert.match(html, /\.inspector\.is-collapsed \{ display: none; \}/);
     assert.match(html, /\.pin-button\[aria-pressed="false"\] \{ display: none; \}/);
     assert.match(html, /@media \(max-width: 420px\)/);
