@@ -311,6 +311,7 @@ describe("coral", () => {
     assert.match(html, /padding-top: clamp\(420px, 68dvh, 680px\)/);
     assert.match(html, /\.dna-list \{\n\s+display: grid;/);
     assert.match(html, /scrollMobileIntoView/);
+    assert.match(html, /scrollMobileIntoView\(dnaList\)/);
     assert.match(html, /syncMobileCanvasTouchAction/);
     assert.match(html, /\.inspector\.is-collapsed \{ display: none; \}/);
     assert.match(html, /\.pin-button\[aria-pressed="false"\] \{ display: none; \}/);
