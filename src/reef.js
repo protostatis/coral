@@ -84,6 +84,23 @@ const FIXED_COLONIES = [
 ];
 
 const FALLBACK_MORPHOLOGIES = ["branching", "fan", "plate", "brain", "anemone"];
+const FIXED_TAG_SCORE = 2;
+const FIXED_DOMAIN_SCORE = 5;
+const MIN_FIXED_TAG_SCORE_WITHOUT_DOMAIN = 4;
+const REEF_BOILERPLATE_TERMS = new Set([
+  "about",
+  "beyond",
+  "browse",
+  "com",
+  "html",
+  "http",
+  "https",
+  "it.",
+  "jun",
+  "june",
+  "start",
+  "www",
+]);
 
 export function buildCoralReefModel(input = {}) {
   const captures = [...(input.captures ?? [])]
@@ -122,21 +139,26 @@ export function buildCoralReefModel(input = {}) {
 }
 
 function classifyCapture(capture) {
-  const haystack = captureHaystack(capture);
+  const haystack = captureClassificationHaystack(capture);
   const tokenSet = new Set(tokenize(haystack));
   let winner = null;
   let winnerScore = 0;
 
   for (const definition of FIXED_COLONIES) {
-    let score = 0;
+    let tagScore = 0;
+    let domainScore = 0;
 
     for (const tag of definition.tags) {
-      if (matchesTag(haystack, tokenSet, tag)) score += 2;
+      if (matchesTag(haystack, tokenSet, tag)) tagScore += FIXED_TAG_SCORE;
     }
 
     for (const domain of definition.domains) {
-      if (matchesDomain(capture.domain, domain)) score += 5;
+      if (matchesDomain(capture.domain, domain)) domainScore += FIXED_DOMAIN_SCORE;
     }
+
+    if (!domainScore && tagScore < MIN_FIXED_TAG_SCORE_WITHOUT_DOMAIN) continue;
+
+    const score = domainScore + tagScore;
 
     if (score > winnerScore) {
       winner = definition;
@@ -174,7 +196,7 @@ function fallbackDefinition(capture) {
     morphology,
     color: colorForMorphology(morphology),
     swatch: swatchForMorphology(morphology),
-    tags: tokenize(key),
+    tags: reefTerms(key),
     domains: [],
     copy: "These artifacts did not match a fixed content family, so Coral groups them by the human query, topic, or source domain that produced them.",
     similarity: "Read-time query, topic, title, and domain overlap decide which artifacts grow together.",
@@ -277,8 +299,8 @@ function buildCaptureGlyph(definition, capture, index, captures) {
   };
 }
 
-function captureHaystack(capture) {
-  return [capture.title, capture.query, capture.topic, capture.domain, capture.url, capture.text?.slice(0, 4000)]
+function captureClassificationHaystack(capture) {
+  return [capture.title, capture.query, capture.topic, capture.domain, capture.url]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -302,10 +324,22 @@ function topTerms(captures, limit) {
 }
 
 function addTerms(scores, value, weight) {
-  for (const term of tokenize(value)) {
-    if (term.length < 3 || term.includes("http")) continue;
+  for (const term of reefTerms(value)) {
+    if (term.length < 3) continue;
     scores.set(term, (scores.get(term) ?? 0) + weight);
   }
+}
+
+function reefTerms(value) {
+  return tokenize(value).filter(isReefSignalTerm);
+}
+
+function isReefSignalTerm(term) {
+  const normalized = String(term ?? "").toLowerCase();
+  if (!normalized || REEF_BOILERPLATE_TERMS.has(normalized)) return false;
+  if (normalized.includes("http") || normalized.includes(".")) return false;
+  if (/^\d{1,2}$/.test(normalized)) return false;
+  return true;
 }
 
 function groupBy(captures, selector, keyName, limit) {

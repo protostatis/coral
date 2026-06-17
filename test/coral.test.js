@@ -236,6 +236,61 @@ describe("coral", () => {
     assert.equal(reef.colonies[0].captures, 1);
   });
 
+  it("does not over-group entity research into broad fixed colonies", () => {
+    const topic = "What is the latest news on Cristiano Ronaldo? — start with https://www.sportsmole.co.uk/football/portugal/world-cup-2026/feature/fading-ronaldos-tournament-drought-meets-desabres-immovable-drc-wall_599352.html and browse beyond it.";
+    const captures = [
+      {
+        id: "ronaldo_1",
+        url: "https://www.sportsmole.co.uk/football/portugal/world-cup-2026/preview/portugal-vs-congo-dr-prediction-team-news-lineups_599353.html",
+        canonical_url: "https://www.sportsmole.co.uk/football/portugal/world-cup-2026/preview/portugal-vs-congo-dr-prediction-team-news-lineups_599353.html",
+        domain: "sportsmole.co.uk",
+        title: "Cristiano Ronaldo tournament drought meets DR Congo wall",
+        text: "This article mentions comments, posts, market reactions, documentation, reports, and threads, but those page words should not decide the colony.",
+        query: topic,
+        topic,
+        captured_at: "2026-06-17T00:43:24Z",
+        meta: { tool: "navigate" },
+      },
+      {
+        id: "ronaldo_2",
+        url: "https://www.sportsmole.co.uk/football/portugal/world-cup-2026/feature/fading-ronaldos-tournament-drought-meets-desabres-immovable-drc-wall_599352.html",
+        canonical_url: "https://www.sportsmole.co.uk/football/portugal/world-cup-2026/feature/fading-ronaldos-tournament-drought-meets-desabres-immovable-drc-wall_599352.html",
+        domain: "sportsmole.co.uk",
+        title: "Portugal latest squad context for Cristiano Ronaldo",
+        text: "A page can contain social comments, stock-market words, wiki references, and news boilerplate without becoming those broad categories.",
+        query: topic,
+        topic,
+        captured_at: "2026-06-17T00:43:20Z",
+        meta: { tool: "navigate" },
+      },
+      {
+        id: "news_1",
+        url: "https://www.reuters.com/world/example",
+        canonical_url: "https://www.reuters.com/world/example",
+        domain: "reuters.com",
+        title: "Breaking news headlines from Reuters",
+        text: "A trusted news domain should still classify as News.",
+        query: "summarize today's top news headlines from multiple sources",
+        topic: "summarize today's top news headlines from multiple sources",
+        captured_at: "2026-06-17T00:44:00Z",
+        meta: { tool: "ddm" },
+      },
+    ];
+
+    const reef = buildCoralReefModel({ captures });
+    const ronaldo = reef.colonies.find((colony) => colony.id.includes("cristiano-ronaldo"));
+    const news = reef.colonies.find((colony) => colony.id === "news");
+
+    assert.ok(ronaldo);
+    assert.equal(ronaldo.captures, 2);
+    assert.equal(news.captures, 1);
+    assert.ok(!["news", "social", "stocks", "docs"].includes(ronaldo.id));
+    assert.ok(!ronaldo.tags.includes("start"));
+    assert.ok(!ronaldo.tags.includes("browse"));
+    assert.ok(!ronaldo.tags.includes("beyond"));
+    assert.ok(!ronaldo.tags.some((tag) => tag.includes(".")));
+  });
+
   it("compares runs by canonical URL and content hash", async () => {
     await coral.appendCapture({
       url: "https://example.com/a",
