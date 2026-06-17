@@ -888,40 +888,40 @@
       html,
       body {
         min-height: 100%;
-        height: 100%;
+        height: auto;
         overflow-x: hidden;
-        overflow-y: hidden;
+        overflow-y: auto;
       }
       #reef-root,
       #reef-root canvas { min-height: 0; }
+      #reef-root canvas { touch-action: pan-y; }
       .hud {
-        position: fixed;
-        inset: 12px;
-        grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(0, 1fr);
-        align-content: space-between;
-        width: auto;
-        max-width: none;
-        height: calc(100vh - 24px);
-        height: calc(100dvh - 24px);
+        position: relative;
+        inset: auto;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 100vw;
+        min-height: 100vh;
+        min-height: 100dvh;
+        height: auto;
         gap: 12px;
         overflow: visible;
-        padding: 0;
+        padding: clamp(420px, 68vh, 680px) 12px 24px;
+        padding-top: clamp(420px, 68dvh, 680px);
       }
       .panel {
         max-width: 100%;
         border-radius: 20px;
-      }
-      .intro {
-        grid-row: 1;
-        width: 100%;
-        max-height: 38vh;
-        max-height: 38dvh;
-        overflow: auto;
-        padding: 10px;
+        background: linear-gradient(180deg, rgba(5, 55, 82, 0.82), rgba(2, 24, 38, 0.9)), var(--panel-strong);
       }
       .intro {
         grid-column: 1;
+        grid-row: auto;
+        width: 100%;
+        max-height: none;
+        overflow: visible;
+        padding: 10px;
       }
       .inspector {
         position: relative;
@@ -930,13 +930,11 @@
         bottom: auto;
         display: none;
         grid-column: 1;
-        grid-row: 2;
+        grid-row: auto;
         grid-template-columns: 1fr;
-        align-self: end;
         width: 100%;
         max-width: 100%;
-        max-height: min(52vh, 420px);
-        max-height: min(52dvh, 420px);
+        max-height: none;
       }
       .inspector.is-collapsed { display: none; }
       .inspector.is-peeking,
@@ -957,9 +955,8 @@
       .inspector-content {
         width: 100%;
         max-width: 100%;
-        max-height: min(52vh, 420px);
-        max-height: min(52dvh, 420px);
-        overflow: auto;
+        max-height: none;
+        overflow: visible;
         padding: 14px;
         opacity: 1;
         pointer-events: auto;
@@ -997,13 +994,20 @@
       }
       .controls button { width: 100%; }
       .dna-list {
-        margin-inline: -2px;
-        padding-bottom: 4px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        overflow: visible;
+        margin-inline: 0;
+        padding-bottom: 0;
       }
       .dna-card {
-        min-width: 132px;
-        max-width: 78vw;
+        grid-template-columns: 30px minmax(0, 1fr);
+        width: 100%;
+        min-width: 0;
+        max-width: none;
       }
+      .dna-card em { display: block; }
       .species {
         max-width: 100%;
         border-radius: 16px;
@@ -1044,9 +1048,11 @@
 
     @media (max-width: 420px) {
       .hud {
-        inset: 10px;
-        height: calc(100vh - 20px);
-        height: calc(100dvh - 20px);
+        padding-right: 10px;
+        padding-bottom: 20px;
+        padding-left: 10px;
+        padding-top: clamp(380px, 68vh, 620px);
+        padding-top: clamp(380px, 68dvh, 620px);
       }
       .controls { grid-template-columns: 1fr 1fr; }
       .capture-card { grid-template-columns: 1fr; }
@@ -1386,6 +1392,7 @@
     controls.minDistance = 3.1;
     controls.maxDistance = 12;
     controls.maxPolarAngle = Math.PI * 0.64;
+    syncMobileCanvasTouchAction();
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -2009,6 +2016,7 @@
       updateCards();
       moveSelectionDisk(colony);
       setInspectorState('expanded');
+      scrollMobileIntoView(inspector);
     }
 
     function scheduleInspectorCollapse() {
@@ -2187,11 +2195,25 @@
       showToast('Showing the whole reef wall. Use DNA lens to reveal colony labels.');
     }
 
+    function isMobileLayout() {
+      return window.matchMedia('(max-width: 860px)').matches;
+    }
+
+    function scrollMobileIntoView(node, block = 'start') {
+      if (!node || !isMobileLayout()) return;
+      requestAnimationFrame(() => node.scrollIntoView({ behavior: 'smooth', block }));
+    }
+
+    function syncMobileCanvasTouchAction() {
+      renderer.domElement.style.touchAction = isMobileLayout() ? 'pan-y' : 'none';
+    }
+
     function toggleLens(event) {
       const pressed = event.currentTarget.getAttribute('aria-pressed') === 'true';
       event.currentTarget.setAttribute('aria-pressed', String(!pressed));
       dnaList.hidden = pressed;
       document.body.classList.toggle('dna-lens', !pressed);
+      if (!pressed) scrollMobileIntoView(dnaList, 'nearest');
     }
 
     function toggleWater(event) {
@@ -2405,6 +2427,7 @@
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
+      syncMobileCanvasTouchAction();
     }
 
     function flashColony(id) {
